@@ -77,44 +77,63 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-gray-600">Загрузка...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Загрузка...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 pb-8">
       <div className="max-w-2xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Трекер привычек</h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Отслеживайте свои ежедневные привычки
+        <header className="mb-8 text-center pt-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+            <span className="text-3xl">✨</span>
+          </div>
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Трекер привычек
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">
+            Отслеживайте свои ежедневные привычки и достигайте целей
           </p>
+          {habits.length > 0 && (
+            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-full shadow-sm">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Всего привычек: <span className="font-bold text-blue-600">{habits.length}</span>
+              </span>
+            </div>
+          )}
         </header>
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">⚠️</span>
+              <p className="text-red-700 dark:text-red-300 font-medium">{error}</p>
+            </div>
           </div>
         )}
 
         <AddHabitForm onSuccess={handleHabitUpdate} />
 
         {habits.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-8 text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-xl p-12 text-center border border-gray-100 dark:border-gray-700">
+            <div className="text-6xl mb-4">🎯</div>
+            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+              Начните свой путь к успеху
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-1">
               У вас пока нет привычек
             </p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-500">
               Добавьте свою первую привычку, чтобы начать отслеживать прогресс
             </p>
           </div>
         ) : (
-          <div>
+          <div className="space-y-4">
             {habits.map((habit) => (
               <HabitItem
                 key={habit.id}

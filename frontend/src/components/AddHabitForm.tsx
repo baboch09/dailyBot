@@ -49,61 +49,84 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-colors mb-4"
+        className="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] mb-6 flex items-center justify-center gap-2"
       >
-        Добавить привычку
+        <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+        <span>Добавить привычку</span>
       </button>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-      <h2 className="text-xl font-semibold mb-4">Новая привычка</h2>
+    <form onSubmit={handleSubmit} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 mb-6 border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+          <span className="text-xl">➕</span>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Новая привычка</h2>
+      </div>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-lg">
+          <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
         </div>
       )}
 
-      <div className="mb-4">
-        <label htmlFor="name" className="block text-sm font-medium mb-2">
-          Название *
+      <div className="mb-5">
+        <label htmlFor="name" className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+          Название <span className="text-red-500">*</span>
         </label>
         <input
           id="name"
           type="text"
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Например: Пить воду"
+          className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all"
+          placeholder="Например: Пить воду утром"
           required
           maxLength={100}
         />
       </div>
 
-      <div className="mb-4">
-        <label htmlFor="description" className="block text-sm font-medium mb-2">
-          Описание (необязательно)
+      <div className="mb-6">
+        <label htmlFor="description" className="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+          Описание <span className="text-gray-400 text-xs">(необязательно)</span>
         </label>
         <textarea
           id="description"
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Добавьте описание..."
+          className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all resize-none"
+          placeholder="Добавьте описание вашей привычки..."
           rows={3}
           maxLength={500}
         />
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors disabled:opacity-50"
+          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] flex items-center justify-center gap-2"
         >
-          {isSubmitting ? 'Создание...' : 'Создать'}
+          {isSubmitting ? (
+            <>
+              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Создание...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span>Создать</span>
+            </>
+          )}
         </button>
         <button
           type="button"
@@ -112,7 +135,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
             setFormData({ name: '', description: '' })
             setError('')
           }}
-          className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+          className="px-6 py-3 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all font-medium text-gray-700 dark:text-gray-300"
         >
           Отмена
         </button>
