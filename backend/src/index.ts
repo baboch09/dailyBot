@@ -29,10 +29,12 @@ app.use(cors({
 app.use(express.json())
 
 // Routes
+// Health check (для Vercel используется отдельный endpoint api/health.ts)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
+// API routes (на Vercel они будут доступны через /api/habits)
 app.use('/api/habits', habitsRoutes)
 
 // Обработка ошибок
