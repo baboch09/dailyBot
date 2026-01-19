@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getWebApp } from './utils/telegram'
+import { getWebApp, getTelegramUserId } from './utils/telegram'
 import { Habit } from './types'
 import { habitsApi } from './services/api'
 import HabitItem from './components/HabitItem'
@@ -38,14 +38,26 @@ function App() {
     try {
       setLoading(true)
       setError('')
+      
+      // Проверяем, что приложение открыто через Telegram
+      const webApp = getWebApp()
+      if (!webApp) {
+        setError('Приложение должно быть открыто через Telegram. Пожалуйста, откройте его через бота.')
+        setLoading(false)
+        return
+      }
+      
       const data = await habitsApi.getAll()
       setHabits(data)
     } catch (error: any) {
       console.error('Error loading habits:', error)
-      setError(
-        error.response?.data?.error ||
-        'Ошибка при загрузке привычек. Убедитесь, что вы открыли приложение через Telegram.'
-      )
+      const errorMessage = error.response?.data?.error || error.response?.data?.details || error.message
+      
+      if (errorMessage?.includes('Telegram ID') || errorMessage?.includes('telegram')) {
+        setError('Ошибка аутентификации. Убедитесь, что вы открыли приложение через Telegram бота.')
+      } else {
+        setError(errorMessage || 'Ошибка при загрузке привычек. Убедитесь, что вы открыли приложение через Telegram.')
+      }
     } finally {
       setLoading(false)
     }

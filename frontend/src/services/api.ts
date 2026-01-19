@@ -52,6 +52,9 @@ api.interceptors.request.use((config) => {
     const telegramId = getTelegramUserId()
     if (telegramId) {
       config.headers['x-telegram-id'] = telegramId.toString()
+      console.log('Added x-telegram-id header:', telegramId)
+    } else {
+      console.warn('No telegram_id available - request might fail authentication')
     }
   } catch (error) {
     console.error('Error setting telegram_id header:', error)
