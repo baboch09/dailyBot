@@ -43,17 +43,17 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
   }
 
   return (
-    <div className={`group bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border ${
+    <div className={`group bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-lg hover:shadow-xl transition-all duration-300 border ${
       habit.isCompletedToday 
         ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' 
         : 'border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700'
     }`}>
-      <div className="p-5">
+      <div className="p-6">
         <div className="flex items-start gap-4">
           <button
             onClick={handleComplete}
             disabled={isCompleting}
-            className={`relative w-10 h-10 rounded-xl flex-shrink-0 transition-all duration-300 transform hover:scale-110 ${
+            className={`relative w-12 h-12 rounded-[16px] flex-shrink-0 transition-all duration-300 transform hover:scale-110 ${
               habit.isCompletedToday
                 ? 'bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/50'
                 : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 hover:from-green-100 hover:to-green-200 dark:hover:from-green-900/30 dark:hover:to-green-800/30 border-2 border-gray-200 dark:border-gray-600'
@@ -95,7 +95,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
             )}
             
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-full">
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-full">
                 <span className="text-base">🔥</span>
                 <span className="text-sm font-bold text-orange-700 dark:text-orange-300">
                   {habit.streak} {habit.streak === 1 ? 'день' : habit.streak < 5 ? 'дня' : 'дней'}
@@ -105,7 +105,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[12px] transition-all disabled:opacity-50"
               >
                 {isDeleting ? (
                   <>
