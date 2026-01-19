@@ -3,12 +3,11 @@
   "buildCommand": "cd backend && npm install && npx prisma generate && npm run build && cd ../frontend && npm install && npm run build",
   "outputDirectory": "frontend/dist",
   "installCommand": "cd backend && npm install && cd ../frontend && npm install",
-  "builds": [
-    {
-      "src": "api/index.ts",
-      "use": "@vercel/node"
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
