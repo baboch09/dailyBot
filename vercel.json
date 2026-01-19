@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "./vercel-build.sh",
   "outputDirectory": "frontend/dist",
-  "installCommand": "cd backend && npm install && cd ../frontend && npm install",
+  "installCommand": "npm install && cd backend && npm install && cd ../frontend && npm install",
   "functions": {
     "api/index.ts": {
       "maxDuration": 30
@@ -11,11 +11,11 @@
   "routes": [
     {
       "src": "/api/health",
-      "dest": "api/health.ts"
+      "dest": "/api/health.ts"
     },
     {
       "src": "/api/(.*)",
-      "dest": "api/index.ts"
+      "dest": "/api/index.ts"
     },
     {
       "src": "/(.*)",
