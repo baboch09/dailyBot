@@ -8,7 +8,9 @@ datasource db {
   // PostgreSQL для продакшена (Vercel)
   // В локальной разработке используйте schema.sqlite.prisma
   provider = "postgresql"
-  url      = env("DATABASE_URL") || env("POSTGRES_URL")
+  // Используем placeholder для генерации Prisma Client (если переменных нет)
+  // Реальный URL будет использоваться в runtime через переменные окружения
+  url      = env("DATABASE_URL") ?? env("POSTGRES_URL") ?? "postgresql://placeholder:placeholder@localhost:5432/placeholder"
 }
 
 // Пользователь идентифицируется только по telegram_id
