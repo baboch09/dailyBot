@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { getWebApp } from './utils/telegram'
 import { Habit } from './types'
 import { habitsApi } from './services/api'
