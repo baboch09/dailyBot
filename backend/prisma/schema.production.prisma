@@ -1,0 +1,51 @@
+// Prisma schema for Telegram Habits Tracker (Production - PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Пользователь идентифицируется только по telegram_id
+model User {
+  id         String   @id @default(cuid())
+  telegramId BigInt   @unique // Используем BigInt для больших чисел telegram_id
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  habits Habit[]
+
+  @@index([telegramId])
+}
+
+// Привычка пользователя
+model Habit {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   // Название привычки
+  description String?  // Опциональное описание
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  logs   HabitLog[]
+
+  @@index([userId])
+}
+
+// Лог выполнения привычки (отметка за день)
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  date      DateTime @default(now()) // Дата выполнения (без времени, только день)
+  createdAt DateTime @default(now())
+
+  habit Habit @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date]) // Одна отметка на привычку в день
+  @@index([habitId])
+  @@index([date])
+}
