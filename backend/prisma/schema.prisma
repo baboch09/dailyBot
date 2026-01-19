@@ -9,7 +9,7 @@ datasource db {
   // В локальной разработке используйте schema.sqlite.prisma
   provider = "postgresql"
   // Используется DATABASE_URL или POSTGRES_URL из переменных окружения
-  // Для build используется placeholder (см. vercel.json buildCommand)
+  // Для build используется placeholder через vercel-build.sh скрипт
   url      = env("DATABASE_URL")
 }
 
