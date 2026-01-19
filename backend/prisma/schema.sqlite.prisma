@@ -1,14 +1,12 @@
-// Prisma schema for Telegram Habits Tracker
+// Prisma schema for Telegram Habits Tracker (SQLite - локальная разработка)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  // PostgreSQL для продакшена (Vercel)
-  // В локальной разработке используйте schema.sqlite.prisma
-  provider = "postgresql"
-  url      = env("DATABASE_URL") || env("POSTGRES_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // Пользователь идентифицируется только по telegram_id
@@ -19,6 +17,8 @@ model User {
   updatedAt  DateTime @updatedAt
 
   habits Habit[]
+
+  @@index([telegramId])
 }
 
 // Привычка пользователя
