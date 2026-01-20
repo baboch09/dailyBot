@@ -17,6 +17,12 @@ echo "Using DATABASE_URL for Prisma generate: ${DATABASE_URL:0:30}..."
 cd backend
 npm install
 npx prisma generate
+# Применяем миграции в проде, чтобы таблицы реально существовали
+if [[ "$DATABASE_URL" == *"placeholder:placeholder"* ]]; then
+  echo "WARNING: Skipping prisma migrate deploy (placeholder DATABASE_URL)."
+else
+  npx prisma migrate deploy
+fi
 npm run build
 
 cd ../frontend

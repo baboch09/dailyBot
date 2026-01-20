@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
+import { Prisma } from '@prisma/client'
 import prisma from '../utils/prisma'
 
 /**
@@ -55,7 +56,20 @@ export async function authenticateUser(req: Request, res: Response, next: NextFu
     next()
   } catch (error: any) {
     console.error('Authentication error:', error)
-    res.status(401).json({ 
+    // Если упали на запросе к БД/инициализации Prisma — это не ошибка telegram_id
+    if (
+      error instanceof Prisma.PrismaClientInitializationError ||
+      error instanceof Prisma.PrismaClientKnownRequestError ||
+      error instanceof Prisma.PrismaClientUnknownRequestError ||
+      error instanceof Prisma.PrismaClientRustPanicError
+    ) {
+      return res.status(500).json({
+        error: 'Database error',
+        details: error.message || 'Database request failed'
+      })
+    }
+
+    res.status(401).json({
       error: 'Invalid telegram ID',
       details: error.message || 'An error occurred during authentication'
     })
