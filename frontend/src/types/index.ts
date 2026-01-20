@@ -4,6 +4,8 @@ export interface Habit {
   id: string
   name: string
   description: string | null
+  reminderTime?: string | null // Время напоминания в формате "HH:MM" (например "09:00")
+  reminderEnabled?: boolean
   createdAt: string
   updatedAt: string
   streak: number
@@ -25,9 +27,13 @@ export interface HabitStats {
 export interface CreateHabitDto {
   name: string
   description?: string
+  reminderTime?: string | null // Время напоминания в формате "HH:MM" (например "09:00")
+  reminderEnabled?: boolean
 }
 
 export interface UpdateHabitDto {
   name?: string
   description?: string
+  reminderTime?: string | null // Время напоминания в формате "HH:MM" (например "09:00")
+  reminderEnabled?: boolean
 }

@@ -21,6 +21,8 @@ export async function getHabits(req: Request, res: Response) {
         id: habit.id,
         name: habit.name,
         description: habit.description,
+        reminderTime: habit.reminderTime,
+        reminderEnabled: habit.reminderEnabled,
         createdAt: habit.createdAt.toISOString(),
         updatedAt: habit.updatedAt.toISOString(),
         streak: await calculateStreak(habit.id),
@@ -46,13 +48,15 @@ export async function createHabit(req: Request, res: Response) {
     }
 
     const user = (req as any).user
-    const { name, description } = req.body
+    const { name, description, reminderTime, reminderEnabled } = req.body
 
     const habit = await prisma.habit.create({
       data: {
         userId: user.id,
         name: name.trim(),
-        description: description?.trim() || null
+        description: description?.trim() || null,
+        reminderTime: reminderTime || null,
+        reminderEnabled: reminderEnabled ?? true
       }
     })
 
@@ -63,6 +67,8 @@ export async function createHabit(req: Request, res: Response) {
       id: habit.id,
       name: habit.name,
       description: habit.description,
+      reminderTime: habit.reminderTime,
+      reminderEnabled: habit.reminderEnabled,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
       streak,
@@ -103,6 +109,8 @@ export async function updateHabit(req: Request, res: Response) {
     const updateData: any = {}
     if (name !== undefined) updateData.name = name.trim()
     if (description !== undefined) updateData.description = description?.trim() || null
+    if ('reminderTime' in req.body) updateData.reminderTime = req.body.reminderTime || null
+    if ('reminderEnabled' in req.body) updateData.reminderEnabled = req.body.reminderEnabled ?? true
 
     const habit = await prisma.habit.update({
       where: { id },
@@ -116,6 +124,8 @@ export async function updateHabit(req: Request, res: Response) {
       id: habit.id,
       name: habit.name,
       description: habit.description,
+      reminderTime: habit.reminderTime,
+      reminderEnabled: habit.reminderEnabled,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
       streak,

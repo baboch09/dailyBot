@@ -6,12 +6,28 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 30
+    },
+    "api/reminders.ts": {
+      "maxDuration": 30
+    },
+    "api/bot.ts": {
+      "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/reminders",
+      "schedule": "* * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/api/bot",
       "dest": "/api/bot.ts"
+    },
+    {
+      "src": "/api/reminders",
+      "dest": "/api/reminders.ts"
     },
     {
       "src": "/api/health",

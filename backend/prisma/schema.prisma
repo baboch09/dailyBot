@@ -29,6 +29,8 @@ model Habit {
   userId      String
   name        String   // Название привычки
   description String?  // Опциональное описание
+  reminderTime String? // Время напоминания (формат: "HH:MM", например "09:00" или null если отключено)
+  reminderEnabled Boolean @default(true) // Включено ли напоминание
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
