@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getWebApp, getTelegramUserId } from './utils/telegram'
+import { getWebApp } from './utils/telegram'
 import { Habit } from './types'
 import { habitsApi } from './services/api'
 import HabitItem from './components/HabitItem'
