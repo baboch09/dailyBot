@@ -99,8 +99,7 @@ export function getTelegramUserId(): number | null {
     console.warn('[Telegram] ⚠️ Could not extract telegram_id from WebApp')
     console.log('[Telegram] Full WebApp object:', {
       initData: webApp.initData,
-      initDataUnsafe: webApp.initDataUnsafe,
-      version: webApp.version || 'unknown'
+      initDataUnsafe: webApp.initDataUnsafe
     })
     return null
   } catch (error) {
