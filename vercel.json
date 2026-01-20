@@ -10,6 +10,10 @@
   },
   "routes": [
     {
+      "src": "/api/bot",
+      "dest": "/api/bot.ts"
+    },
+    {
       "src": "/api/health",
       "dest": "/api/health.ts"
     },
