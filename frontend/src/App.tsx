@@ -12,46 +12,25 @@ function App() {
 
   // Инициализация Telegram WebApp
   useEffect(() => {
-    // Ждём загрузки Telegram SDK
-    const initTelegram = () => {
-      try {
-        const webApp = getWebApp()
-        if (webApp) {
-          console.log('[App] ✅ Telegram WebApp initialized')
-          webApp.ready()
-          webApp.expand()
+    try {
+      const webApp = getWebApp()
+      if (webApp) {
+        webApp.ready()
+        webApp.expand()
 
-          // Настраиваем тему Telegram
-          document.documentElement.style.setProperty(
-            '--tg-theme-bg-color',
-            webApp.themeParams.bg_color || '#ffffff'
-          )
-          document.documentElement.style.setProperty(
-            '--tg-theme-text-color',
-            webApp.themeParams.text_color || '#000000'
-          )
-          
-          // Логируем информацию о пользователе для отладки
-          if (webApp.initDataUnsafe?.user) {
-            console.log('[App] User info:', {
-              id: webApp.initDataUnsafe.user.id,
-              first_name: webApp.initDataUnsafe.user.first_name,
-              username: webApp.initDataUnsafe.user.username
-            })
-          }
-        } else {
-          console.warn('[App] ⚠️ Telegram WebApp not available - app might not be opened through Telegram')
-        }
-      } catch (error) {
-        console.error('[App] ❌ Error initializing WebApp:', error)
+        // Настраиваем тему Telegram
+        document.documentElement.style.setProperty(
+          '--tg-theme-bg-color',
+          webApp.themeParams.bg_color || '#ffffff'
+        )
+        document.documentElement.style.setProperty(
+          '--tg-theme-text-color',
+          webApp.themeParams.text_color || '#000000'
+        )
       }
+    } catch (error) {
+      console.error('Error initializing WebApp:', error)
     }
-
-    // Проверяем сразу и с небольшой задержкой (на случай асинхронной загрузки SDK)
-    initTelegram()
-    const timeout = setTimeout(initTelegram, 100)
-    
-    return () => clearTimeout(timeout)
   }, [])
 
   // Загрузка привычек

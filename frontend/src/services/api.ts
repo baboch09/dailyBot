@@ -52,21 +52,12 @@ api.interceptors.request.use((config) => {
     const telegramId = getTelegramUserId()
     if (telegramId) {
       config.headers['x-telegram-id'] = telegramId.toString()
-      console.log('[API] ✅ Added x-telegram-id header:', telegramId)
+      console.log('Added x-telegram-id header:', telegramId)
     } else {
-      console.error('[API] ❌ No telegram_id available - request will fail authentication')
-      console.error('[API] Request URL:', config.url)
-      console.error('[API] Request method:', config.method)
-      // Показываем более подробную информацию для отладки
-      if (typeof window !== 'undefined') {
-        console.error('[API] window.Telegram exists:', !!window.Telegram)
-        if (window.Telegram) {
-          console.error('[API] window.Telegram.WebApp exists:', !!window.Telegram.WebApp)
-        }
-      }
+      console.warn('No telegram_id available - request might fail authentication')
     }
   } catch (error) {
-    console.error('[API] ❌ Error setting telegram_id header:', error)
+    console.error('Error setting telegram_id header:', error)
   }
   
   return config
