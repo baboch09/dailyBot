@@ -1,6 +1,12 @@
 # 🤖 Настройка WebApp URL в BotFather
 
-## Ваш HTTPS URL:
+## Ваш HTTPS URL (Production):
+
+```
+https://daily-bot-drab.vercel.app
+```
+
+## Ваш HTTPS URL (для локальной разработки с ngrok):
 
 ```
 https://marietta-gumptious-decurrently.ngrok-free.dev
@@ -26,9 +32,14 @@ https://marietta-gumptious-decurrently.ngrok-free.dev
 
 6. **Введите:**
    - **Text**: `Открыть трекер` (или любое другое название)
+   - **URL**: `https://daily-bot-drab.vercel.app` (для production)
+   
+   **Или** для локальной разработки:
    - **URL**: `https://marietta-gumptious-decurrently.ngrok-free.dev`
 
 7. **Готово!** ✅
+
+**Важно:** Для production используйте Vercel URL: `https://daily-bot-drab.vercel.app`
 
 ## Тестирование:
 
