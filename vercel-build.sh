@@ -29,10 +29,36 @@ npm install
 npx prisma generate
 
 # Применяем миграции в проде, чтобы таблицы реально существовали
+# Пропускаем если используется placeholder URL
 if [[ "$DATABASE_URL" == *"placeholder:placeholder"* ]]; then
   echo "WARNING: Skipping prisma migrate deploy (placeholder DATABASE_URL)."
 else
-  npx prisma migrate deploy
+  # Пытаемся применить миграции
+  # Если схема уже существует (была создана через db push), помечаем миграции как применённые
+  MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
+  MIGRATE_STATUS=$?
+  
+  if [ $MIGRATE_STATUS -ne 0 ]; then
+    if echo "$MIGRATE_OUTPUT" | grep -q "P3005"; then
+      echo "Database schema already exists (from prisma db push)."
+      echo "Marking migrations as applied to baseline the database..."
+      # Помечаем все миграции как применённые
+      for migration in prisma/migrations/*/; do
+        if [ -d "$migration" ]; then
+          migration_name=$(basename "$migration")
+          echo "Marking migration '$migration_name' as applied..."
+          npx prisma migrate resolve --applied "$migration_name" || true
+        fi
+      done
+      echo "Migrations baseline completed."
+    else
+      echo "Migration failed with error:"
+      echo "$MIGRATE_OUTPUT"
+      exit 1
+    fi
+  else
+    echo "Migrations applied successfully."
+  fi
 fi
 
 npm run build
