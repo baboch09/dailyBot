@@ -15,9 +15,6 @@ app.use(cors({
     process.env.FRONTEND_URL || 'http://localhost:3000',
     // Локальная разработка
     'http://localhost:3000',
-    // Ngrok (для тестирования)
-    /\.ngrok-free\.dev$/,
-    /\.ngrok\.io$/,
     // Vercel
     /\.vercel\.app$/,
     /\.vercel\.com$/,

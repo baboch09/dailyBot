@@ -24,10 +24,6 @@ const getApiUrl = () => {
     
     // Локальная разработка
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      // Если через ngrok, используем прокси
-      if (hostname.includes('ngrok')) {
-        return '/api'
-      }
       return 'http://localhost:5001/api'
     }
   }
