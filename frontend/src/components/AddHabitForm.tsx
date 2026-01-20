@@ -11,8 +11,10 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<CreateHabitDto>({
     name: '',
-    description: ''
+    description: '',
+    reminderEnabled: true
   })
+  const [reminderTime, setReminderTime] = useState('09:00')
   const [error, setError] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,9 +30,12 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
     try {
       await habitsApi.create({
         name: formData.name.trim(),
-        description: formData.description?.trim() || undefined
+        description: formData.description?.trim() || undefined,
+        reminderTime: formData.reminderEnabled ? reminderTime : null,
+        reminderEnabled: formData.reminderEnabled
       })
-      setFormData({ name: '', description: '' })
+      setFormData({ name: '', description: '', reminderEnabled: true })
+      setReminderTime('09:00')
       setIsOpen(false)
       onSuccess()
     } catch (error: any) {
@@ -105,6 +110,42 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
         />
       </div>
 
+      <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[20px] border border-blue-100 dark:border-blue-800">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[16px] flex items-center justify-center">
+            <span className="text-xl">⏰</span>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-0.5">Напоминание</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Получайте уведомления в Telegram</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.reminderEnabled ?? true}
+              onChange={(e) => setFormData({ ...formData, reminderEnabled: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
+          </label>
+        </div>
+        
+        {formData.reminderEnabled && (
+          <div className="mt-4">
+            <label htmlFor="reminderTime" className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+              Время напоминания
+            </label>
+            <input
+              id="reminderTime"
+              type="time"
+              value={reminderTime}
+              onChange={(e) => setReminderTime(e.target.value)}
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all"
+            />
+          </div>
+        )}
+      </div>
+
       <div className="flex gap-3">
         <button
           type="submit"
@@ -132,7 +173,8 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
           type="button"
           onClick={() => {
             setIsOpen(false)
-            setFormData({ name: '', description: '' })
+            setFormData({ name: '', description: '', reminderEnabled: true })
+            setReminderTime('09:00')
             setError('')
           }}
           className="px-6 py-3.5 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all font-medium text-gray-700 dark:text-gray-300"

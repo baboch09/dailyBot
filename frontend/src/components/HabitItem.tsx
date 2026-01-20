@@ -11,6 +11,10 @@ interface HabitItemProps {
 const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isEditingReminder, setIsEditingReminder] = useState(false)
+  const [reminderTime, setReminderTime] = useState(habit.reminderTime || '09:00')
+  const [reminderEnabled, setReminderEnabled] = useState(habit.reminderEnabled ?? true)
+  const [isUpdatingReminder, setIsUpdatingReminder] = useState(false)
 
   const handleComplete = async () => {
     setIsCompleting(true)
@@ -40,6 +44,32 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const handleUpdateReminder = async () => {
+    setIsUpdatingReminder(true)
+    try {
+      await habitsApi.update(habit.id, {
+        reminderTime: reminderEnabled ? reminderTime : null,
+        reminderEnabled: reminderEnabled
+      })
+      setIsEditingReminder(false)
+      onUpdate()
+    } catch (error) {
+      console.error('Error updating reminder:', error)
+      alert('Ошибка при обновлении напоминания')
+    } finally {
+      setIsUpdatingReminder(false)
+    }
+  }
+
+  const formatTime = (time: string | null | undefined) => {
+    if (!time) return null
+    const [hours, minutes] = time.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const displayHour = hour % 12 || 12
+    return `${displayHour}:${minutes} ${ampm}`
   }
 
   return (
@@ -92,6 +122,88 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
               }`}>
                 {habit.description}
               </p>
+            )}
+
+            {/* Напоминание */}
+            {(habit.reminderTime || isEditingReminder) && (
+              <div className="mb-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100 dark:border-blue-800">
+                {!isEditingReminder ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">⏰</span>
+                      <div>
+                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          {habit.reminderEnabled 
+                            ? `Напоминание в ${formatTime(habit.reminderTime)}`
+                            : 'Напоминание отключено'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsEditingReminder(true)
+                        setReminderTime(habit.reminderTime || '09:00')
+                        setReminderEnabled(habit.reminderEnabled ?? true)
+                      }}
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium px-3 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-[12px] transition-all"
+                    >
+                      Изменить
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        <span>⏰</span>
+                        <span>Включить напоминание</span>
+                      </label>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={reminderEnabled}
+                          onChange={(e) => setReminderEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
+                      </label>
+                    </div>
+                    {reminderEnabled && (
+                      <div>
+                        <label htmlFor={`reminder-${habit.id}`} className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                          Время
+                        </label>
+                        <input
+                          id={`reminder-${habit.id}`}
+                          type="time"
+                          value={reminderTime}
+                          onChange={(e) => setReminderTime(e.target.value)}
+                          className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm"
+                        />
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleUpdateReminder}
+                        disabled={isUpdatingReminder}
+                        className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isUpdatingReminder ? 'Сохранение...' : 'Сохранить'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingReminder(false)
+                          setReminderTime(habit.reminderTime || '09:00')
+                          setReminderEnabled(habit.reminderEnabled ?? true)
+                        }}
+                        className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             
             <div className="flex items-center justify-between flex-wrap gap-2">
