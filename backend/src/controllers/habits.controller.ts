@@ -50,6 +50,35 @@ export async function createHabit(req: Request, res: Response) {
     const user = (req as any).user
     const { name, description, reminderTime, reminderEnabled } = req.body
 
+    // Дополнительная проверка лимита перед созданием (защита от race condition)
+    const userWithSubscription = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        habits: true
+      }
+    })
+
+    if (!userWithSubscription) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const now = new Date()
+    const isPremium = 
+      userWithSubscription.subscriptionStatus === 'active' &&
+      userWithSubscription.subscriptionExpiresAt &&
+      userWithSubscription.subscriptionExpiresAt > now
+
+    const FREE_HABITS_LIMIT = 3
+    if (!isPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
+      return res.status(403).json({
+        error: 'Free plan limit reached',
+        message: `На бесплатном тарифе можно создать максимум ${FREE_HABITS_LIMIT} привычки`,
+        limit: FREE_HABITS_LIMIT,
+        current: userWithSubscription.habits.length,
+        upgradeRequired: true
+      })
+    }
+
     const habit = await prisma.habit.create({
       data: {
         userId: user.id,
@@ -157,14 +186,33 @@ export async function deleteHabit(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
-    await prisma.habit.delete({
-      where: { id }
+    // Удаляем привычку (логи удалятся каскадно благодаря onDelete: Cascade в schema)
+    // Используем транзакцию для безопасного удаления
+    await prisma.$transaction(async (tx) => {
+      // Сначала удаляем все логи
+      await tx.habitLog.deleteMany({
+        where: { habitId: id }
+      })
+      
+      // Затем удаляем саму привычку
+      await tx.habit.delete({
+        where: { id }
+      })
     })
 
     res.status(204).send()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting habit:', error)
-    res.status(500).json({ error: 'Failed to delete habit' })
+    
+    // Более детальная обработка ошибок
+    if (error.code === 'P2025') {
+      return res.status(404).json({ error: 'Habit not found' })
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to delete habit',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 }
 

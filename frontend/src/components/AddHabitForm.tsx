@@ -1,14 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { habitsApi } from '../services/api'
-import { CreateHabitDto } from '../types'
+import { habitsApi, subscriptionApi } from '../services/api'
+import { CreateHabitDto, SubscriptionStatus } from '../types'
 
 interface AddHabitFormProps {
   onSuccess: () => void
+  habitsCount?: number
+  onScrollToSubscription?: () => void
 }
 
-const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
+const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: propsHabitsCount = 0, onScrollToSubscription }) => {
   const [isOpen, setIsOpen] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
+  const subscriptionRef = useRef<HTMLDivElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<CreateHabitDto>({
     name: '',
@@ -17,6 +20,26 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
   })
   const [reminderTime, setReminderTime] = useState('09:00')
   const [error, setError] = useState('')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
+  const [habitsCount, setHabitsCount] = useState(propsHabitsCount)
+
+  useEffect(() => {
+    loadSubscriptionStatus()
+  }, [])
+
+  useEffect(() => {
+    // Обновляем количество привычек из пропсов
+    setHabitsCount(propsHabitsCount)
+  }, [propsHabitsCount])
+
+  const loadSubscriptionStatus = async () => {
+    try {
+      const status = await subscriptionApi.getStatus()
+      setSubscriptionStatus(status)
+    } catch (error) {
+      console.error('Error loading subscription status:', error)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,14 +61,32 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
       setFormData({ name: '', description: '', reminderEnabled: true })
       setReminderTime('09:00')
       setIsOpen(false)
-      onSuccess()
+      setError('')
+      await loadSubscriptionStatus() // Обновляем статус после создания
+      onSuccess() // Это обновит habits в App.tsx, который передаст новое количество через пропсы
     } catch (error: any) {
       console.error('Error creating habit:', error)
-      setError(
-        error.response?.data?.errors?.[0]?.msg ||
-        error.response?.data?.error ||
-        'Ошибка при создании привычки'
-      )
+      
+      // Обработка ошибки лимита Free плана
+      if (error.response?.status === 403 && error.response?.data?.upgradeRequired) {
+        setError(error.response.data.message || 'Достигнут лимит бесплатного плана')
+        setIsOpen(false)
+        // Скроллим к подписке
+        if (onScrollToSubscription) {
+          onScrollToSubscription()
+        } else {
+          setTimeout(() => {
+            subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 300)
+        }
+      } else {
+        setError(
+          error.response?.data?.errors?.[0]?.msg ||
+          error.response?.data?.error ||
+          error.response?.data?.message ||
+          'Ошибка при создании привычки'
+        )
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -59,23 +100,71 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
     }
   }, [isOpen])
 
+  // Проверяем, достигнут ли лимит
+  const now = new Date()
+  const isPremium = 
+    subscriptionStatus?.subscriptionStatus === 'active' && 
+    subscriptionStatus.subscriptionExpiresAt &&
+    new Date(subscriptionStatus.subscriptionExpiresAt) > now &&
+    (subscriptionStatus.daysRemaining || 0) > 0
+  
+  const FREE_HABITS_LIMIT = 3
+  const isLimitReached = !isPremium && habitsCount >= FREE_HABITS_LIMIT
+
+  const handleButtonClick = () => {
+    if (isLimitReached) {
+      // Скроллим к подписке
+      if (onScrollToSubscription) {
+        onScrollToSubscription()
+      } else {
+        subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+      return
+    }
+    setIsOpen(true)
+  }
+
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] mb-4 flex items-center justify-center gap-2"
-      >
-        <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        <span>Добавить привычку</span>
-      </button>
+      <>
+        <div ref={subscriptionRef}></div>
+        <button
+          onClick={handleButtonClick}
+          disabled={isLimitReached}
+          className={`group w-full font-bold py-4 px-6 rounded-full shadow-lg transition-all duration-300 transform mb-4 flex items-center justify-center gap-2 ${
+            isLimitReached
+              ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-600'
+              : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-xl hover:scale-[1.02]'
+          }`}
+        >
+          {isLimitReached ? (
+            <>
+              <span>🔒</span>
+              <span>Лимит Free плана достигнут (3/3)</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Добавить привычку</span>
+            </>
+          )}
+        </button>
+        {isLimitReached && (
+          <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-200 dark:border-blue-800 text-center">
+            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+              💎 Обновите план до Premium для неограниченного количества привычек
+            </p>
+          </div>
+        )}
+      </>
     )
   }
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-xl p-5 mb-4 border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-300">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-5">
         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[20px] flex items-center justify-center">
           <span className="text-xl">➕</span>
         </div>

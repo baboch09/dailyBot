@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getWebApp } from './utils/telegram'
 import { Habit } from './types'
 import { habitsApi } from './services/api'
@@ -10,6 +10,7 @@ function App() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const subscriptionRef = useRef<HTMLDivElement>(null)
 
   // Инициализация Telegram WebApp
   useEffect(() => {
@@ -135,9 +136,17 @@ function App() {
           </div>
         )}
 
-        <SubscriptionManager />
+        <div ref={subscriptionRef}>
+          <SubscriptionManager />
+        </div>
 
-        <AddHabitForm onSuccess={handleHabitUpdate} />
+        <AddHabitForm 
+          onSuccess={handleHabitUpdate}
+          habitsCount={habits.length}
+          onScrollToSubscription={() => {
+            subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+        />
 
         {habits.length === 0 ? (
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[32px] shadow-xl p-12 text-center border border-gray-100 dark:border-gray-700">

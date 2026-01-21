@@ -8,6 +8,7 @@ import {
   getHabitStats
 } from '../controllers/habits.controller'
 import { authenticateUser } from '../middleware/auth'
+import { checkFreeLimits } from '../middleware/subscription'
 import { createHabitValidation, updateHabitValidation } from '../middleware/validation'
 
 const router = Router()
@@ -18,8 +19,8 @@ router.use(authenticateUser)
 // Получить все привычки пользователя
 router.get('/', getHabits)
 
-// Создать новую привычку
-router.post('/', createHabitValidation, createHabit)
+// Создать новую привычку - проверяем лимиты Free плана
+router.post('/', createHabitValidation, checkFreeLimits, createHabit)
 
 // Получить статистику для конкретной привычки
 router.get('/:id/stats', getHabitStats)
