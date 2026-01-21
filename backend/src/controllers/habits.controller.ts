@@ -215,14 +215,18 @@ export async function updateHabit(req: Request, res: Response) {
       where: { id: user.id }
     })
 
-    const now = new Date()
-    const isPremium = 
-      userWithSubscription?.subscriptionStatus === 'active' &&
-      userWithSubscription?.subscriptionExpiresAt &&
-      userWithSubscription.subscriptionExpiresAt > now
+    if (!userWithSubscription) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    const currentTime = new Date()
+    const hasPremium = 
+      userWithSubscription.subscriptionStatus === 'active' &&
+      userWithSubscription.subscriptionExpiresAt &&
+      userWithSubscription.subscriptionExpiresAt > currentTime
 
     // Если пытаются включить/установить напоминание без Premium
-    if ((req.body.reminderEnabled || req.body.reminderTime) && !isPremium) {
+    if ((req.body.reminderEnabled || req.body.reminderTime) && !hasPremium) {
       return res.status(403).json({
         error: 'Premium subscription required for reminders',
         message: 'Напоминания доступны только с Premium подпиской',
@@ -236,12 +240,12 @@ export async function updateHabit(req: Request, res: Response) {
     if ('reminderTime' in req.body) updateData.reminderTime = req.body.reminderTime || null
     if ('reminderEnabled' in req.body) {
       // Если отключают напоминание или у пользователя Premium, разрешаем
-      if (!req.body.reminderEnabled || isPremium) {
+      if (!req.body.reminderEnabled || hasPremium) {
         updateData.reminderEnabled = req.body.reminderEnabled ?? true
       }
     }
     // Если пользователь не Premium, отключаем напоминания
-    if (!isPremium) {
+    if (!hasPremium) {
       updateData.reminderEnabled = false
       updateData.reminderTime = null
     }
