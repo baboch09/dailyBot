@@ -65,9 +65,37 @@ npm run build
 # Копируем сгенерированный Prisma Client в корень для serverless functions
 # Vercel использует корневой node_modules для serverless functions в api/
 cd ..
-mkdir -p node_modules/.prisma
-cp -r backend/node_modules/.prisma/client node_modules/.prisma/client 2>/dev/null || true
-cp -r backend/node_modules/@prisma node_modules/@prisma 2>/dev/null || true
+echo "Copying Prisma Client to root node_modules..."
+
+# Создаём необходимые директории
+mkdir -p node_modules/.prisma/client
+mkdir -p node_modules/@prisma
+
+# Копируем Prisma Client
+if [ -d "backend/node_modules/.prisma/client" ]; then
+  cp -r backend/node_modules/.prisma/client/* node_modules/.prisma/client/ 2>/dev/null || true
+  echo "✅ Copied .prisma/client"
+else
+  echo "⚠️  backend/node_modules/.prisma/client not found"
+fi
+
+# Копируем @prisma пакет
+if [ -d "backend/node_modules/@prisma" ]; then
+  cp -r backend/node_modules/@prisma/* node_modules/@prisma/ 2>/dev/null || true
+  echo "✅ Copied @prisma"
+else
+  echo "⚠️  backend/node_modules/@prisma not found"
+fi
+
+# Также генерируем Prisma Client напрямую в корне для надёжности
+# Используем схему из prisma/ в корне (если есть) или из backend
+if [ -f "prisma/schema.prisma" ]; then
+  echo "Generating Prisma Client from root prisma/schema.prisma..."
+  npx prisma generate --schema=./prisma/schema.prisma
+else
+  echo "Generating Prisma Client from backend/prisma/schema.prisma..."
+  npx prisma generate --schema=./backend/prisma/schema.prisma
+fi
 
 # Frontend setup
 cd frontend
