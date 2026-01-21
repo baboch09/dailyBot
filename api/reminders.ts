@@ -111,6 +111,8 @@ async function checkAndSendReminders() {
   const currentHour = now.getHours()
   const currentMinute = now.getMinutes()
   const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`
+  
+  console.log(`🕐 Current time (UTC): ${currentTime}`)
 
   // Получаем все привычки с включёнными напоминаниями
   const habits = await prisma.habit.findMany({
@@ -125,6 +127,8 @@ async function checkAndSendReminders() {
     }
   })
 
+  console.log(`📋 Found ${habits.length} habits with reminders enabled`)
+
   // Получаем сегодняшнюю дату
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -134,8 +138,22 @@ async function checkAndSendReminders() {
   let sentCount = 0
 
   for (const habit of habits) {
+    console.log(`🔍 Checking habit: "${habit.name}" - reminderTime: "${habit.reminderTime}"`)
+    
     // Проверяем, наступило ли время напоминания
-    if (habit.reminderTime !== currentTime) {
+    // Учитываем, что cron проверяет каждые 5 минут, поэтому проверяем в диапазоне ±5 минут
+    const [reminderHour, reminderMinute] = habit.reminderTime!.split(':').map(Number)
+    const reminderTimeInMinutes = reminderHour * 60 + reminderMinute
+    const currentTimeInMinutes = currentHour * 60 + currentMinute
+    
+    // Проверяем, попадает ли текущее время в диапазон напоминания (±5 минут)
+    // Это позволяет срабатывать напоминанию даже если cron немного опоздал
+    const timeDifference = Math.abs(currentTimeInMinutes - reminderTimeInMinutes)
+    const isWithinReminderWindow = timeDifference <= 5 && currentTimeInMinutes >= reminderTimeInMinutes
+    
+    console.log(`   Current: ${currentTime} (${currentTimeInMinutes} min), Reminder: ${habit.reminderTime} (${reminderTimeInMinutes} min), Diff: ${timeDifference} min, Within window: ${isWithinReminderWindow}`)
+    
+    if (!isWithinReminderWindow) {
       continue
     }
 
@@ -150,19 +168,27 @@ async function checkAndSendReminders() {
       }
     })
 
+    console.log(`   Today log found: ${!!todayLog}`)
+
     // Если привычка ещё не выполнена - отправляем напоминание
     if (!todayLog) {
       const chatId = Number(habit.user.telegramId.toString())
+      console.log(`   💌 Sending reminder to chatId: ${chatId}`)
       const sent = await sendReminder(chatId, habit.name)
       if (sent) {
         sentCount++
         console.log(`✅ Sent reminder for habit "${habit.name}" to user ${chatId}`)
+      } else {
+        console.error(`❌ Failed to send reminder for habit "${habit.name}" to user ${chatId}`)
       }
+    } else {
+      console.log(`   ⏭️  Skipping reminder - habit already completed today`)
     }
   }
 
   console.log(`📊 Processed ${habits.length} habits, sent ${sentCount} reminders`)
-  return { processed: habits.length, sent: sentCount }
+  console.log(`🕐 Check completed at: ${new Date().toISOString()}`)
+  return { processed: habits.length, sent: sentCount, currentTime }
 }
 
 // Обработчик для внешнего Cron Job (cron-job.org, EasyCron и т.д.)
