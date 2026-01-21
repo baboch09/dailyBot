@@ -1,6 +1,16 @@
 import axios from 'axios'
 import { getTelegramUserId } from '../utils/telegram'
-import type { Habit, HabitStats, CreateHabitDto, UpdateHabitDto } from '../types'
+import type { 
+  Habit, 
+  HabitStats, 
+  CreateHabitDto, 
+  UpdateHabitDto,
+  SubscriptionStatus,
+  SubscriptionPlansResponse,
+  CreatePaymentRequest,
+  CreatePaymentResponse,
+  PaymentStatusResponse
+} from '../types'
 
 // URL backend API
 // Определяем автоматически на основе текущего домена
@@ -95,6 +105,33 @@ export const habitsApi = {
   // Получить статистику за последние 7 дней
   getStats: async (id: string): Promise<HabitStats> => {
     const response = await api.get<HabitStats>(`/habits/${id}/stats`)
+    return response.data
+  }
+}
+
+// API методы для работы с подпиской
+export const subscriptionApi = {
+  // Получить статус подписки
+  getStatus: async (): Promise<SubscriptionStatus> => {
+    const response = await api.get<SubscriptionStatus>('/subscription/status')
+    return response.data
+  },
+
+  // Получить список тарифов
+  getPlans: async (): Promise<SubscriptionPlansResponse> => {
+    const response = await api.get<SubscriptionPlansResponse>('/subscription/plans')
+    return response.data
+  },
+
+  // Создать платеж
+  createPayment: async (data: CreatePaymentRequest): Promise<CreatePaymentResponse> => {
+    const response = await api.post<CreatePaymentResponse>('/subscription/create-payment', data)
+    return response.data
+  },
+
+  // Проверить статус платежа
+  checkPaymentStatus: async (paymentId: string): Promise<PaymentStatusResponse> => {
+    const response = await api.get<PaymentStatusResponse>(`/subscription/payment/${paymentId}/status`)
     return response.data
   }
 }

@@ -2,6 +2,8 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import habitsRoutes from './routes/habits.routes'
+import subscriptionRoutes from './routes/subscription.routes'
+import paymentsRoutes from './routes/payments.routes'
 
 // Загружаем переменные окружения
 dotenv.config()
@@ -31,8 +33,10 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// API routes (на Vercel они будут доступны через /api/habits)
+// API routes (на Vercel они будут доступны через /api/...)
 app.use('/api/habits', habitsRoutes)
+app.use('/api/subscription', subscriptionRoutes)
+app.use('/api/payments', paymentsRoutes)
 
 // Обработка ошибок
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

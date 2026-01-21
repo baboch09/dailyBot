@@ -19,7 +19,14 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // Подписка
+  subscriptionType     String?  @default("free") // Тип подписки: "free" | "premium" | "trial"
+  subscriptionStatus   String?  @default("active") // Статус подписки: "active" | "expired" | "canceled"
+  subscriptionExpiresAt DateTime? // Дата окончания подписки
+  subscriptionStartedAt DateTime? // Дата начала подписки
+
   habits Habit[]
+  payments Payment[]
 }
 
 // Привычка пользователя
@@ -51,4 +58,25 @@ model HabitLog {
   @@unique([habitId, date])
   @@index([habitId])
   @@index([date])
+}
+
+// Платеж в ЮКассе
+model Payment {
+  id            String   @id @default(cuid())
+  userId        String
+  yookassaId    String?  @unique // ID платежа в ЮКассе (payment.id)
+  amount        Float    // Сумма платежа в рублях
+  currency      String   @default("RUB") // Валюта
+  status        String   @default("pending") // Статус: "pending" | "succeeded" | "canceled" | "failed"
+  paymentMethod String?  // Способ оплаты (банковская карта и т.д.)
+  description   String?  // Описание платежа
+  metadata      String?  // Дополнительные данные (JSON)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([yookassaId])
+  @@index([status])
 }

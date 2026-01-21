@@ -4,6 +4,7 @@ import { Habit } from './types'
 import { habitsApi } from './services/api'
 import HabitItem from './components/HabitItem'
 import AddHabitForm from './components/AddHabitForm'
+import SubscriptionManager from './components/SubscriptionManager'
 
 function App() {
   const [habits, setHabits] = useState<Habit[]>([])
@@ -116,6 +117,8 @@ function App() {
             </div>
           </div>
         )}
+
+        <SubscriptionManager />
 
         <AddHabitForm onSuccess={handleHabitUpdate} />
 
