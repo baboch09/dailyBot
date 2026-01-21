@@ -138,15 +138,21 @@ async function checkAndSendReminders() {
   return { processed: habits.length, sent: sentCount }
 }
 
-// Обработчик для Vercel Cron Job
+// Обработчик для внешнего Cron Job (cron-job.org, EasyCron и т.д.)
+// Также можно вызывать вручную для тестирования
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Проверка авторизации от Vercel Cron
+  // Проверка авторизации от внешнего cron сервиса
   const authHeader = req.headers.authorization
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && !process.env.CRON_SECRET) {
-    // В dev окружении пропускаем проверку, в production нужен CRON_SECRET
-    console.warn('Cron secret not set, allowing request')
-  } else if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
+  const cronSecret = process.env.CRON_SECRET
+  
+  // Если CRON_SECRET установлен, требуем авторизацию
+  if (cronSecret) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ error: 'Unauthorized. Provide Authorization: Bearer <CRON_SECRET>' })
+    }
+  } else {
+    // В dev окружении без секрета пропускаем проверку (но лучше установить!)
+    console.warn('⚠️ CRON_SECRET not set - endpoint is publicly accessible!')
   }
 
   try {

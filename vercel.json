@@ -14,12 +14,6 @@
       "maxDuration": 30
     }
   },
-  "crons": [
-    {
-      "path": "/api/reminders",
-      "schedule": "* * * * *"
-    }
-  ],
   "routes": [
     {
       "src": "/api/bot",
