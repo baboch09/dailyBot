@@ -118,14 +118,19 @@ export async function createHabit(req: Request, res: Response) {
       }
     })
 
-    // Проверяем, что напоминания доступны только для Premium
-    const now = new Date()
-    const isPremium = 
-      userWithSubscription?.subscriptionStatus === 'active' &&
-      userWithSubscription?.subscriptionExpiresAt &&
-      userWithSubscription.subscriptionExpiresAt > now
+    if (!userWithSubscription) {
+      return res.status(404).json({ error: 'User not found' })
+    }
 
-    if ((reminderEnabled || reminderTime) && !isPremium) {
+    // Проверяем подписку один раз
+    const currentTime = new Date()
+    const hasPremium = 
+      userWithSubscription.subscriptionStatus === 'active' &&
+      userWithSubscription.subscriptionExpiresAt &&
+      userWithSubscription.subscriptionExpiresAt > currentTime
+
+    // Проверяем, что напоминания доступны только для Premium
+    if ((reminderEnabled || reminderTime) && !hasPremium) {
       return res.status(403).json({
         error: 'Premium subscription required for reminders',
         message: 'Напоминания доступны только с Premium подпиской',
@@ -133,18 +138,9 @@ export async function createHabit(req: Request, res: Response) {
       })
     }
 
-    if (!userWithSubscription) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-
-    const now = new Date()
-    const isPremium = 
-      userWithSubscription.subscriptionStatus === 'active' &&
-      userWithSubscription.subscriptionExpiresAt &&
-      userWithSubscription.subscriptionExpiresAt > now
-
+    // Проверяем лимит Free плана
     const FREE_HABITS_LIMIT = 3
-    if (!isPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
+    if (!hasPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
       return res.status(403).json({
         error: 'Free plan limit reached',
         message: `На бесплатном тарифе можно создать максимум ${FREE_HABITS_LIMIT} привычки`,
