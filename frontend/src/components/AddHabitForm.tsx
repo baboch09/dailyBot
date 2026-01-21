@@ -113,7 +113,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
 
   const handleButtonClick = () => {
     if (isLimitReached) {
-      // Скроллим к подписке
+      // Скроллим к кнопке обновить в подписке
       if (onScrollToSubscription) {
         onScrollToSubscription()
       } else {
@@ -130,17 +130,16 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         <div ref={subscriptionRef}></div>
         <button
           onClick={handleButtonClick}
-          disabled={isLimitReached}
           className={`group w-full font-bold py-4 px-6 rounded-full shadow-lg transition-all duration-300 transform mb-4 flex items-center justify-center gap-2 ${
             isLimitReached
-              ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-pointer hover:bg-gray-400 dark:hover:bg-gray-600'
+              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-xl hover:scale-[1.02]'
               : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-xl hover:scale-[1.02]'
           }`}
         >
           {isLimitReached ? (
             <>
-              <span>🔒</span>
-              <span>Лимит Free плана достигнут (3/3)</span>
+              <span>💎</span>
+              <span>Обновите план до Премиум</span>
             </>
           ) : (
             <>
@@ -151,13 +150,6 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
             </>
           )}
         </button>
-        {isLimitReached && (
-          <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-200 dark:border-blue-800 text-center">
-            <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-              💎 Обновите план до Premium для неограниченного количества привычек
-            </p>
-          </div>
-        )}
       </>
     )
   }

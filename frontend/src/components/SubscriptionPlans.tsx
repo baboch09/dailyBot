@@ -76,7 +76,7 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
   const savingsPercent = Math.round((savings / (monthlyPrice * 12)) * 100)
 
   return (
-    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
       {error && (
         <div className="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
           <p className="text-red-700 dark:text-red-300 text-sm font-medium text-center">{error}</p>
@@ -84,12 +84,12 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
       )}
 
       {/* Табы Месяц/Год */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 overflow-hidden rounded-t-[24px]">
         <button
           onClick={() => setActiveTab('month')}
           className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
             activeTab === 'month'
-              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800'
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
           }`}
         >
@@ -102,7 +102,7 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
           onClick={() => setActiveTab('year')}
           className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
             activeTab === 'year'
-              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800'
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
           }`}
         >

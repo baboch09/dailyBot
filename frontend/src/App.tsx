@@ -102,6 +102,21 @@ function App() {
     loadHabits()
   }
 
+  const handleHabitComplete = async (habitId: string, completed: boolean) => {
+    // Оптимистичное обновление - обновляем сразу без перезагрузки всего списка
+    setHabits(habits.map(h => {
+      if (h.id === habitId) {
+        // Предварительно обновляем состояние
+        const newStreak = completed ? (h.isCompletedToday ? h.streak : h.streak + 1) : h.streak
+        return { ...h, isCompletedToday: completed, streak: newStreak }
+      }
+      return h
+    }))
+    
+    // Обновляем на сервере в фоне (API уже вызван в HabitItem)
+    // Если нужно, можно обновить streak после ответа сервера
+  }
+
   const handleHabitDelete = (id: string) => {
     setHabits(habits.filter(h => h.id !== id))
   }
@@ -134,6 +149,13 @@ function App() {
             <div className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-full shadow-sm">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Всего привычек: <span className="font-bold text-blue-600">{habits.length}</span>
+                {(() => {
+                  const isPremium = subscriptionStatus?.subscriptionStatus === 'active' && 
+                                   subscriptionStatus?.subscriptionExpiresAt && 
+                                   new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
+                                   (subscriptionStatus?.daysRemaining || 0) > 0
+                  return isPremium ? ' / ∞' : ` / 3`
+                })()}
               </span>
             </div>
           )}
@@ -180,6 +202,7 @@ function App() {
                 key={habit.id}
                 habit={habit}
                 onUpdate={handleHabitUpdate}
+                onComplete={handleHabitComplete}
                 onDelete={handleHabitDelete}
                 isPremium={!!(subscriptionStatus?.subscriptionStatus === 'active' && 
                           subscriptionStatus?.subscriptionExpiresAt && 

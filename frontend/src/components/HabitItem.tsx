@@ -5,12 +5,13 @@ import { habitsApi } from '../services/api'
 interface HabitItemProps {
   habit: Habit
   onUpdate: () => void
+  onComplete?: (habitId: string, completed: boolean) => void
   onDelete?: (id: string) => void // Оставлено для обратной совместимости, но не используется
   isPremium?: boolean
   onScrollToSubscription?: () => void
 }
 
-const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = false, onScrollToSubscription }) => {
+const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPremium = false, onScrollToSubscription }) => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditingReminder, setIsEditingReminder] = useState(false)
@@ -24,12 +25,27 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
   const [isUpdatingHabit, setIsUpdatingHabit] = useState(false)
 
   const handleComplete = async () => {
+    const newCompletedState = !habit.isCompletedToday
     setIsCompleting(true)
+    
+    // Оптимистичное обновление через колбэк
+    if (onComplete) {
+      onComplete(habit.id, newCompletedState)
+    }
+    
     try {
-      await habitsApi.completeToday(habit.id)
-      onUpdate()
+      const result = await habitsApi.completeToday(habit.id)
+      // Обновляем streak из ответа сервера
+      if (onComplete) {
+        onComplete(habit.id, result.completed)
+      }
     } catch (error: any) {
       console.error('Error completing habit:', error)
+      
+      // Откатываем изменения при ошибке
+      if (onComplete) {
+        onComplete(habit.id, habit.isCompletedToday)
+      }
       
       // Если ошибка retryable, предлагаем повторить
       if (error.response?.status === 503 && error.response?.data?.retryable) {
@@ -343,7 +359,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
 
                     {/* Выпадающее меню */}
                     {showMenu && (
-                      <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-[16px] shadow-xl border border-gray-200 dark:border-gray-700 z-10 overflow-hidden">
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-[16px] shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
                         <button
                           onClick={() => {
                             setIsEditingHabit(true)

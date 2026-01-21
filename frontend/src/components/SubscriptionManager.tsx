@@ -26,7 +26,18 @@ export default function SubscriptionManager() {
   }
 
   const togglePlans = () => {
-    setShowPlans(!showPlans)
+    const newState = !showPlans
+    setShowPlans(newState)
+    
+    // Скроллим к тарифам при открытии, чтобы вся вью помещалась
+    if (newState) {
+      setTimeout(() => {
+        const plansElement = document.querySelector('.subscription-plans-container')
+        if (plansElement) {
+          plansElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }, 100)
+    }
   }
 
   const isActive = status?.subscriptionStatus === 'active' && (status?.daysRemaining || 0) > 0
@@ -91,7 +102,7 @@ export default function SubscriptionManager() {
       </div>
 
       {/* Анимированный блок с тарифами */}
-      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+      <div className={`subscription-plans-container overflow-hidden transition-all duration-300 ease-in-out ${
         showPlans 
           ? 'max-h-[800px] opacity-100 mb-4' 
           : 'max-h-0 opacity-0 mb-0'
