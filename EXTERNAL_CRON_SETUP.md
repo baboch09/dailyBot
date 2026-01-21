@@ -43,28 +43,30 @@
    
    - **Request Headers**: Добавьте заголовок для авторизации:
      ```
-     Authorization: Bearer YOUR_CRON_SECRET
+     Authorization: Bearer 0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU=
      ```
-     (См. шаг 3 для получения секрета)
+     (Ваш CRON_SECRET - см. шаг 3)
 
 4. Нажмите **"Create cronjob"**
 
 ### Шаг 3: Установите CRON_SECRET в Vercel
 
-1. Сгенерируйте случайный секретный ключ:
-   ```bash
-   openssl rand -hex 32
-   ```
-   Или используйте любой длинный случайный строку
+**Ваш CRON_SECRET уже сгенерирован:**
+```
+0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU=
+```
 
-2. Добавьте в Vercel Environment Variables:
+1. Добавьте в Vercel Environment Variables:
    - **Vercel Dashboard** → **Settings** → **Environment Variables**
    - **Name**: `CRON_SECRET`
-   - **Value**: ваш сгенерированный секрет
+   - **Value**: `0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU=`
    - **Environments**: Production, Preview, Development
    - Нажмите **Save**
 
-3. Используйте этот же секрет в заголовке `Authorization` в cron-job.org
+2. Используйте этот же секрет в заголовке `Authorization` в cron-job.org:
+   ```
+   Authorization: Bearer 0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU=
+   ```
 
 ### Шаг 4: Проверьте работу
 
@@ -106,14 +108,14 @@ jobs:
       - name: Call Reminders API
         run: |
           curl -X POST https://daily-bot-drab.vercel.app/api/reminders \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+            -H "Authorization: Bearer 0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU="
 ```
 
 1. Создайте секрет в GitHub:
    - **Settings** → **Secrets and variables** → **Actions**
    - **New repository secret**
    - **Name**: `CRON_SECRET`
-   - **Value**: ваш секрет (тот же, что в Vercel)
+   - **Value**: `0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU=`
 
 2. Файл автоматически запустится по расписанию
 
@@ -145,7 +147,7 @@ jobs:
 
 ```bash
 curl -X POST https://daily-bot-drab.vercel.app/api/reminders \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
+  -H "Authorization: Bearer 0aMvjWr0SPssZHh+ebagetYCWNvHEXrekDH2HHMAwFU="
 ```
 
 Должен вернуть:
