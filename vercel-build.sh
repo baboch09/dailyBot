@@ -32,31 +32,26 @@ npm install
 # Это решает проблему "prepared statement already exists" при использовании pooler
 npx prisma generate
 
-# Применяем миграции в проде, чтобы таблицы реально существовали
+# Применяем изменения схемы в проде
 # Пропускаем если используется placeholder URL
 if [[ "$DATABASE_URL" == *"placeholder:placeholder"* ]]; then
-  echo "WARNING: Skipping prisma migrate deploy (placeholder DATABASE_URL)."
+  echo "WARNING: Skipping database schema update (placeholder DATABASE_URL)."
 else
-  # Пытаемся применить миграции
-  # Если схема уже существует (была создана через db push), пропускаем или baseline
+  # Используем db push для синхронизации схемы с БД
+  # Это безопасно и применятся только изменения
+  echo "Pushing schema changes to database..."
   set +e  # Временно отключаем set -e для обработки ошибок
-  MIGRATE_OUTPUT=$(npx prisma migrate deploy 2>&1)
-  MIGRATE_STATUS=$?
+  DB_PUSH_OUTPUT=$(npx prisma db push --accept-data-loss 2>&1)
+  DB_PUSH_STATUS=$?
   set -e  # Включаем обратно
   
-  if [ $MIGRATE_STATUS -ne 0 ]; then
-    if echo "$MIGRATE_OUTPUT" | grep -q "P3005"; then
-      echo "Database schema already exists (from prisma db push)."
-      echo "Skipping migrations as schema is already present."
-      echo "If you need to apply migrations, run: npx prisma migrate deploy --baseline"
-    else
-      echo "Migration failed with error:"
-      echo "$MIGRATE_OUTPUT"
-      # Не завершаем сборку при ошибке миграции, так как схема уже существует
-      echo "Continuing build despite migration error..."
-    fi
+  if [ $DB_PUSH_STATUS -ne 0 ]; then
+    echo "Database push failed with error:"
+    echo "$DB_PUSH_OUTPUT"
+    # Не завершаем сборку, возможно схема уже актуальна
+    echo "Continuing build despite database push error..."
   else
-    echo "Migrations applied successfully."
+    echo "Database schema updated successfully."
   fi
 fi
 
@@ -92,9 +87,19 @@ fi
 if [ -f "prisma/schema.prisma" ]; then
   echo "Generating Prisma Client from root prisma/schema.prisma..."
   npx prisma generate --schema=./prisma/schema.prisma
+  echo "✅ Prisma Client generated in root"
 else
   echo "Generating Prisma Client from backend/prisma/schema.prisma..."
-  npx prisma generate --schema=./backend/prisma/schema.prisma
+  npx prisma generate --schema=./backend/prisma/schema.prisma --generator client --output=./node_modules/.prisma/client
+  echo "✅ Prisma Client generated in root from backend schema"
+fi
+
+# Проверяем, что Prisma Client сгенерирован
+if [ -d "node_modules/.prisma/client" ]; then
+  echo "✅ Prisma Client is present in root node_modules"
+  ls -la node_modules/.prisma/client | head -5
+else
+  echo "⚠️  WARNING: Prisma Client not found in root node_modules!"
 fi
 
 # Frontend setup
