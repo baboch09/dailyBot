@@ -21,9 +21,17 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate }) => {
     try {
       await habitsApi.completeToday(habit.id)
       onUpdate()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing habit:', error)
-      alert('Ошибка при отметке привычки')
+      
+      // Если ошибка retryable, предлагаем повторить
+      if (error.response?.status === 503 && error.response?.data?.retryable) {
+        if (confirm('Ошибка подключения к базе данных. Попробовать ещё раз?')) {
+          setTimeout(() => handleComplete(), 1000)
+        }
+      } else {
+        alert(error.response?.data?.error || 'Ошибка при отметке привычки')
+      }
     } finally {
       setIsCompleting(false)
     }
@@ -39,9 +47,17 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate }) => {
       await habitsApi.delete(habit.id)
       // Вызываем onUpdate вместо onDelete для перезагрузки списка
       onUpdate()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting habit:', error)
-      alert('Ошибка при удалении привычки')
+      
+      // Если ошибка retryable, предлагаем повторить
+      if (error.response?.status === 503 && error.response?.data?.retryable) {
+        if (confirm('Ошибка подключения к базе данных. Попробовать ещё раз?')) {
+          setTimeout(() => handleDelete(), 1000)
+        }
+      } else {
+        alert(error.response?.data?.error || 'Ошибка при удалении привычки')
+      }
     } finally {
       setIsDeleting(false)
     }

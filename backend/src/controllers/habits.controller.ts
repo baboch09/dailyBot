@@ -187,26 +187,34 @@ export async function deleteHabit(req: Request, res: Response) {
     }
 
     // Удаляем привычку (логи удалятся каскадно благодаря onDelete: Cascade в schema)
-    // Используем транзакцию для безопасного удаления
-    await prisma.$transaction(async (tx) => {
-      // Сначала удаляем все логи
-      await tx.habitLog.deleteMany({
-        where: { habitId: id }
-      })
-      
-      // Затем удаляем саму привычку
-      await tx.habit.delete({
-        where: { id }
-      })
+    // НЕ используем транзакцию, так как она может конфликтовать с connection pooler
+    // Каскадное удаление работает автоматически через Prisma
+    await prisma.habit.delete({
+      where: { id }
     })
 
     res.status(204).send()
   } catch (error: any) {
     console.error('Error deleting habit:', error)
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      meta: error.meta
+    })
     
     // Более детальная обработка ошибок
     if (error.code === 'P2025') {
       return res.status(404).json({ error: 'Habit not found' })
+    }
+    
+    // Если ошибка связана с prepared statements или connection
+    if (error.code === 'P1001' || error.message?.includes('prepared statement') || error.message?.includes('connection')) {
+      console.error('Database connection error, retrying...')
+      // Возвращаем ошибку, чтобы фронтенд мог повторить запрос
+      return res.status(503).json({ 
+        error: 'Database connection error. Please try again.',
+        retryable: true
+      })
     }
     
     res.status(500).json({ 
@@ -238,6 +246,8 @@ export async function completeHabitToday(req: Request, res: Response) {
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
 
     // Проверяем, не отмечена ли уже привычка сегодня
     const existingLog = await prisma.habitLog.findFirst({
@@ -245,16 +255,24 @@ export async function completeHabitToday(req: Request, res: Response) {
         habitId: id,
         date: {
           gte: today,
-          lt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
+          lt: tomorrow
         }
       }
     })
 
     if (existingLog) {
       // Если уже отмечена, удаляем отметку (toggle)
-      await prisma.habitLog.delete({
-        where: { id: existingLog.id }
-      })
+      try {
+        await prisma.habitLog.delete({
+          where: { id: existingLog.id }
+        })
+      } catch (deleteError: any) {
+        // Если ошибка при удалении (может быть уже удалена), просто продолжаем
+        if (deleteError.code !== 'P2025') {
+          console.error('Error deleting habit log:', deleteError)
+          throw deleteError
+        }
+      }
 
       const streak = await calculateStreak(id)
       return res.json({
@@ -264,12 +282,34 @@ export async function completeHabitToday(req: Request, res: Response) {
     }
 
     // Создаём новую отметку
-    await prisma.habitLog.create({
-      data: {
-        habitId: id,
-        date: today
+    // Используем upsert для предотвращения конфликтов
+    try {
+      await prisma.habitLog.create({
+        data: {
+          habitId: id,
+          date: today
+        }
+      })
+    } catch (createError: any) {
+      // Если уже существует (race condition), просто получаем существующую
+      if (createError.code === 'P2002') {
+        const log = await prisma.habitLog.findFirst({
+          where: {
+            habitId: id,
+            date: {
+              gte: today,
+              lt: tomorrow
+            }
+          }
+        })
+        
+        if (!log) {
+          throw createError
+        }
+      } else {
+        throw createError
       }
-    })
+    }
 
     const streak = await calculateStreak(id)
 
@@ -277,9 +317,27 @@ export async function completeHabitToday(req: Request, res: Response) {
       completed: true,
       streak
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error completing habit:', error)
-    res.status(500).json({ error: 'Failed to complete habit' })
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      meta: error.meta
+    })
+    
+    // Если ошибка связана с prepared statements или connection
+    if (error.code === 'P1001' || error.message?.includes('prepared statement') || error.message?.includes('connection')) {
+      console.error('Database connection error in completeHabitToday')
+      return res.status(503).json({ 
+        error: 'Database connection error. Please try again.',
+        retryable: true
+      })
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to complete habit',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 }
 
