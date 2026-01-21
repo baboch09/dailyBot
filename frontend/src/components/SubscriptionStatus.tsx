@@ -11,6 +11,7 @@ export default function SubscriptionStatus({}: SubscriptionStatusProps) {
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showPayments, setShowPayments] = useState(false)
 
   useEffect(() => {
     loadStatus()
@@ -48,37 +49,56 @@ export default function SubscriptionStatus({}: SubscriptionStatusProps) {
   return (
     <div className="space-y-3">
       {/* История платежей */}
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[20px] shadow-sm p-4 border border-gray-100 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-          История платежей
-        </h3>
-        <div className="space-y-2">
-          {status.recentPayments.map((payment) => (
-            <div
-              key={payment.id}
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-[16px]"
-            >
-              <div>
-                <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
-                  {payment.amount} ₽
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(payment.createdAt).toLocaleDateString('ru-RU')}
-                </p>
-              </div>
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  payment.status === 'succeeded'
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                    : payment.status === 'pending'
-                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                }`}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[20px] shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <button
+          onClick={() => setShowPayments(!showPayments)}
+          className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            История платежей
+          </h3>
+          <svg 
+            className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-300 ${showPayments ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {/* Выпадающий список платежей */}
+        <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          showPayments ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="px-4 pb-4 space-y-2">
+            {status.recentPayments.map((payment) => (
+              <div
+                key={payment.id}
+                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-[16px]"
               >
-                {payment.status === 'succeeded' ? 'Оплачено' : payment.status === 'pending' ? 'Ожидание' : 'Ошибка'}
-              </span>
-            </div>
-          ))}
+                <div>
+                  <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
+                    {payment.amount} ₽
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {new Date(payment.createdAt).toLocaleDateString('ru-RU')}
+                  </p>
+                </div>
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    payment.status === 'succeeded'
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      : payment.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                  }`}
+                >
+                  {payment.status === 'succeeded' ? 'Оплачено' : payment.status === 'pending' ? 'Ожидание' : 'Ошибка'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

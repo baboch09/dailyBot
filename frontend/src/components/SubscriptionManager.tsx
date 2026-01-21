@@ -70,16 +70,23 @@ export default function SubscriptionManager() {
               )}
             </div>
           </div>
-          <button
-            onClick={togglePlans}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all transform ${
-              isActive
-                ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 active:scale-95'
-                : 'bg-white/90 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 active:scale-95'
-            } ${showPlans ? 'rotate-180' : ''}`}
-          >
-            ⬆️ Обновить
-          </button>
+          {/* Кнопка "Обновить" показываем только если нет активной подписки */}
+          {!isActive && (
+            <button
+              onClick={togglePlans}
+              className="px-4 py-2 rounded-full text-sm font-semibold transition-all bg-white/90 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 active:scale-95 flex items-center gap-2"
+            >
+              <span>Обновить</span>
+              <svg 
+                className={`w-4 h-4 transition-transform duration-300 ${showPlans ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
