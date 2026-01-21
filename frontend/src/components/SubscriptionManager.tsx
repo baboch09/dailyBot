@@ -84,6 +84,7 @@ export default function SubscriptionManager() {
           {/* Кнопка "Обновить" показываем только если нет активной подписки */}
           {!isActive && (
             <button
+              data-update-subscription-button
               onClick={togglePlans}
               className="px-4 py-2 rounded-full text-sm font-semibold transition-all bg-white/90 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 active:scale-95 flex items-center gap-2"
             >

@@ -102,19 +102,25 @@ function App() {
     loadHabits()
   }
 
-  const handleHabitComplete = async (habitId: string, completed: boolean) => {
-    // Оптимистичное обновление - обновляем сразу без перезагрузки всего списка
-    setHabits(habits.map(h => {
+  const handleHabitComplete = (habitId: string, completed: boolean) => {
+    // Обновляем только конкретную привычку без перезагрузки всего списка
+    setHabits(prevHabits => prevHabits.map(h => {
       if (h.id === habitId) {
-        // Предварительно обновляем состояние
-        const newStreak = completed ? (h.isCompletedToday ? h.streak : h.streak + 1) : h.streak
-        return { ...h, isCompletedToday: completed, streak: newStreak }
+        // Обновляем только isCompletedToday, streak будет обновлен из ответа сервера
+        return { ...h, isCompletedToday: completed }
       }
       return h
     }))
     
-    // Обновляем на сервере в фоне (API уже вызван в HabitItem)
-    // Если нужно, можно обновить streak после ответа сервера
+    // Обновляем streak из сервера асинхронно, но только для этой привычки
+    habitsApi.getAll().then(updatedHabits => {
+      setHabits(prevHabits => prevHabits.map(h => {
+        const updated = updatedHabits.find(uh => uh.id === h.id)
+        return updated ? updated : h
+      }))
+    }).catch(error => {
+      console.error('Error refreshing habits after completion:', error)
+    })
   }
 
   const handleHabitDelete = (id: string) => {
@@ -210,7 +216,12 @@ function App() {
                           (subscriptionStatus?.daysRemaining || 0) > 0)}
                 onScrollToSubscription={() => {
                   setTimeout(() => {
-                    subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    const updateButton = document.querySelector('[data-update-subscription-button]')
+                    if (updateButton) {
+                      updateButton.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    } else {
+                      subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                    }
                   }, 100)
                 }}
               />

@@ -113,14 +113,17 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
 
   const handleButtonClick = () => {
     if (isLimitReached) {
-      // Скроллим к кнопке обновить в подписке, центрируем
-      if (onScrollToSubscription) {
-        onScrollToSubscription()
-      } else {
-        setTimeout(() => {
+      // Скроллим к кнопке "Обновить" в карточке тарифа, центрируем
+      setTimeout(() => {
+        const updateButton = document.querySelector('[data-update-subscription-button]')
+        if (updateButton) {
+          updateButton.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } else if (onScrollToSubscription) {
+          onScrollToSubscription()
+        } else {
           subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }, 100)
-      }
+        }
+      }, 100)
       return
     }
     setIsOpen(true)
