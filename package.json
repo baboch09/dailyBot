@@ -20,6 +20,10 @@
   "keywords": ["telegram", "mini-app", "habits", "tracker"],
   "author": "",
   "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^5.7.1",
+    "node-telegram-bot-api": "^0.64.0"
+  },
   "devDependencies": {
     "@vercel/node": "^3.0.0",
     "concurrently": "^8.2.2"
