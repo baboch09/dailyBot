@@ -13,25 +13,38 @@ if (!databaseUrl) {
   throw new Error('DATABASE_URL is not set')
 }
 
-// Для Supabase pooler: переключаемся на прямой порт и добавляем параметры
-// Это решает проблему "prepared statement already exists" с connection pooling
+// Для Supabase pooler: оптимизируем connection string для serverless
+// В Session mode ограничено количество подключений, поэтому используем Transaction mode или прямой порт
 try {
   const dbUrl = new URL(databaseUrl)
   
-  // Если используется pooler порт (6543), переключаемся на прямой (5432)
+  // Если используется pooler порт (6543) в Session mode, переключаемся на Transaction mode или прямой порт
+  // Transaction mode поддерживает больше подключений для параллельных запросов
   if (dbUrl.port === '6543') {
-    dbUrl.port = '5432'
+    // Переключаемся на Transaction mode pooler (порт 6543, но в URL меняем на транзакционный режим)
+    // Или используем прямой порт 5432 для большей надежности
+    // Для Supabase: используем POSTGRES_PRISMA_URL для транзакционного pooler или прямой порт
+    const isSupabase = dbUrl.hostname.includes('supabase') || dbUrl.hostname.includes('pooler')
+    
+    if (isSupabase) {
+      // Используем прямой порт для избежания лимитов pooler
+      dbUrl.port = '5432'
+      // Убираем параметры pooler, так как используем прямой порт
+      dbUrl.searchParams.delete('pgbouncer')
+    } else {
+      // Для других pooler'ов переключаемся на прямой порт
+      dbUrl.port = '5432'
+    }
   }
   
-  // Добавляем параметр для работы с connection pooling
-  // ?pgbouncer=true указывает Prisma, что используется connection pooler
-  if (!dbUrl.searchParams.has('pgbouncer')) {
-    dbUrl.searchParams.set('pgbouncer', 'true')
-  }
-  
-  // Отключаем prepared statements для pooler (они не поддерживаются)
+  // Добавляем параметры для оптимизации подключений
   if (!dbUrl.searchParams.has('connect_timeout')) {
     dbUrl.searchParams.set('connect_timeout', '10')
+  }
+  
+  // Ограничиваем количество подключений на один Prisma Client экземпляр
+  if (!dbUrl.searchParams.has('connection_limit')) {
+    dbUrl.searchParams.set('connection_limit', '5')
   }
   
   databaseUrl = dbUrl.toString()
@@ -45,7 +58,19 @@ process.env.DATABASE_URL = databaseUrl
 // Настройка Prisma Client для serverless окружения (Vercel)
 // В serverless окружении лучше использовать прямой порт (5432) вместо pooler (6543)
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+  // Ограничиваем connection pool для serverless
+  datasources: {
+    db: {
+      url: databaseUrl
+    }
+  }
 })
+
+// Глобальный singleton для переиспользования в serverless функциях
+// В Vercel каждая функция может иметь свой экземпляр, но мы стараемся переиспользовать
+if (typeof globalThis !== 'undefined') {
+  (globalThis as any).__prisma = prisma
+}
 
 export default prisma

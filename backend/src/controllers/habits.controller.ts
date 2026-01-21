@@ -12,12 +12,33 @@ export async function getHabits(req: Request, res: Response) {
 
     const habits = await prisma.habit.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: {
+        logs: {
+          orderBy: { date: 'desc' },
+          take: 100 // Ограничиваем количество логов для производительности
+        }
+      }
     })
 
+    // Вычисляем дату сегодня один раз
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+
     // Добавляем streak и флаг выполнения за сегодня для каждой привычки
-    const habitsWithStats = await Promise.all(
-      habits.map(async (habit) => ({
+    // Используем последовательную обработку вместо Promise.all для уменьшения нагрузки на БД
+    const habitsWithStats = []
+    for (const habit of habits) {
+      const streak = calculateStreakFromLogs(habit.logs, today)
+      const isCompletedToday = habit.logs.some(log => {
+        const logDate = new Date(log.date)
+        logDate.setHours(0, 0, 0, 0)
+        return logDate.getTime() === today.getTime()
+      })
+
+      habitsWithStats.push({
         id: habit.id,
         name: habit.name,
         description: habit.description,
@@ -25,16 +46,55 @@ export async function getHabits(req: Request, res: Response) {
         reminderEnabled: habit.reminderEnabled,
         createdAt: habit.createdAt.toISOString(),
         updatedAt: habit.updatedAt.toISOString(),
-        streak: await calculateStreak(habit.id),
-        isCompletedToday: await isCompletedToday(habit.id)
-      }))
-    )
+        streak,
+        isCompletedToday
+      })
+    }
 
     res.json(habitsWithStats)
   } catch (error) {
     console.error('Error getting habits:', error)
     res.status(500).json({ error: 'Failed to get habits' })
   }
+}
+
+/**
+ * Вспомогательная функция для вычисления streak из логов (без запроса к БД)
+ */
+function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): number {
+  if (logs.length === 0) {
+    return 0
+  }
+
+  // Проверяем, выполнена ли привычка сегодня
+  const todayLog = logs.find(log => {
+    const logDate = new Date(log.date)
+    logDate.setHours(0, 0, 0, 0)
+    return logDate.getTime() === today.getTime()
+  })
+
+  // Если сегодня не выполнена, начинаем считать со вчера
+  let checkDate = todayLog ? today : new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  let streak = todayLog ? 1 : 0
+
+  // Идём по логам и считаем последовательные дни
+  for (let i = todayLog ? 1 : 0; i < logs.length; i++) {
+    const logDate = new Date(logs[i].date)
+    logDate.setHours(0, 0, 0, 0)
+
+    const expectedDate = new Date(checkDate)
+    expectedDate.setHours(0, 0, 0, 0)
+
+    if (logDate.getTime() === expectedDate.getTime()) {
+      streak++
+      checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000)
+    } else {
+      // Если есть пропуск, прекращаем подсчёт
+      break
+    }
+  }
+
+  return streak
 }
 
 /**
