@@ -12,30 +12,39 @@ if (!token) {
 }
 
 // Инициализация Prisma Client
-let prisma: PrismaClient
-try {
-  // Нормализуем DATABASE_URL для pooler
-  let databaseUrl = process.env.DATABASE_URL
-  if (databaseUrl) {
+// Используем динамический импорт для избежания проблем с генерацией
+let prisma: PrismaClient | null = null
+
+function getPrismaClient(): PrismaClient {
+  if (!prisma) {
     try {
-      const dbUrl = new URL(databaseUrl)
-      if (dbUrl.port === '6543') {
-        dbUrl.port = '5432'
+      // Нормализуем DATABASE_URL для pooler
+      let databaseUrl = process.env.DATABASE_URL
+      if (databaseUrl) {
+        try {
+          const dbUrl = new URL(databaseUrl)
+          if (dbUrl.port === '6543') {
+            dbUrl.port = '5432'
+          }
+          if (!dbUrl.searchParams.has('pgbouncer')) {
+            dbUrl.searchParams.set('pgbouncer', 'true')
+          }
+          databaseUrl = dbUrl.toString()
+          process.env.DATABASE_URL = databaseUrl
+        } catch (e) {
+          console.warn('Could not parse DATABASE_URL:', e)
+        }
       }
-      if (!dbUrl.searchParams.has('pgbouncer')) {
-        dbUrl.searchParams.set('pgbouncer', 'true')
-      }
-      databaseUrl = dbUrl.toString()
-      process.env.DATABASE_URL = databaseUrl
-    } catch (e) {
-      console.warn('Could not parse DATABASE_URL:', e)
+
+      prisma = new PrismaClient({
+        log: ['error', 'warn'],
+      })
+    } catch (error) {
+      console.error('Failed to initialize Prisma:', error)
+      throw error
     }
   }
-
-  prisma = new PrismaClient()
-} catch (error) {
-  console.error('Failed to initialize Prisma:', error)
-  throw error
+  return prisma
 }
 
 const bot = token ? new TelegramBot(token, { polling: false }) : null
@@ -75,8 +84,14 @@ async function sendReminder(chatId: number, habitName: string) {
  * Проверка и отправка напоминаний
  */
 async function checkAndSendReminders() {
-  if (!bot || !prisma) {
-    console.error('Bot or Prisma not initialized')
+  if (!bot) {
+    console.error('Bot not initialized')
+    return
+  }
+
+  const prisma = getPrismaClient()
+  if (!prisma) {
+    console.error('Prisma not initialized')
     return
   }
 
@@ -169,6 +184,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       message: error instanceof Error ? error.message : 'Unknown error'
     })
   } finally {
-    await prisma?.$disconnect()
+    if (prisma) {
+      await prisma.$disconnect().catch(console.error)
+    }
   }
 }
