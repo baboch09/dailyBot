@@ -209,7 +209,9 @@ function App() {
                           new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
                           (subscriptionStatus?.daysRemaining || 0) > 0)}
                 onScrollToSubscription={() => {
-                  subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  setTimeout(() => {
+                    subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }, 100)
                 }}
               />
             ))}

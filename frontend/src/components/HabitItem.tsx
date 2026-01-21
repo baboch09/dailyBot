@@ -25,32 +25,29 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const [isUpdatingHabit, setIsUpdatingHabit] = useState(false)
 
   const handleComplete = async () => {
-    const newCompletedState = !habit.isCompletedToday
-    setIsCompleting(true)
-    
-    // Оптимистичное обновление через колбэк
-    if (onComplete) {
-      onComplete(habit.id, newCompletedState)
+    // Не позволяем кликать повторно пока идет обработка
+    if (isCompleting) {
+      return
     }
+    
+    setIsCompleting(true)
     
     try {
       const result = await habitsApi.completeToday(habit.id)
-      // Обновляем streak из ответа сервера
+      // Обновляем только после успешного ответа сервера
       if (onComplete) {
         onComplete(habit.id, result.completed)
       }
+      // Также обновляем streak из ответа
+      onUpdate()
     } catch (error: any) {
       console.error('Error completing habit:', error)
-      
-      // Откатываем изменения при ошибке
-      if (onComplete) {
-        onComplete(habit.id, habit.isCompletedToday)
-      }
       
       // Если ошибка retryable, предлагаем повторить
       if (error.response?.status === 503 && error.response?.data?.retryable) {
         if (confirm('Ошибка подключения к базе данных. Попробовать ещё раз?')) {
           setTimeout(() => handleComplete(), 1000)
+          return
         }
       } else {
         alert(error.response?.data?.error || 'Ошибка при отметке привычки')
@@ -269,7 +266,12 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                 : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 hover:from-green-100 hover:to-green-200 dark:hover:from-green-900/30 dark:hover:to-green-800/30 border-2 border-gray-200 dark:border-gray-600'
             } ${isCompleting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
-            {habit.isCompletedToday && (
+            {isCompleting ? (
+              <svg className="w-6 h-6 text-gray-500 dark:text-gray-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : habit.isCompletedToday ? (
               <svg
                 className="w-6 h-6 text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"
                 fill="none"
@@ -283,7 +285,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-            )}
+            ) : null}
           </button>
           
           <div className="flex-1 min-w-0">
@@ -405,7 +407,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                 </div>
 
                 {habit.description && (
-                  <p className={`text-sm mb-3 ${
+                  <p className={`text-sm mb-3 break-words ${
                     habit.isCompletedToday 
                       ? 'text-gray-400 dark:text-gray-500' 
                       : 'text-gray-600 dark:text-gray-400'

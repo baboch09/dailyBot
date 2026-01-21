@@ -113,11 +113,13 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
 
   const handleButtonClick = () => {
     if (isLimitReached) {
-      // Скроллим к кнопке обновить в подписке
+      // Скроллим к кнопке обновить в подписке, центрируем
       if (onScrollToSubscription) {
         onScrollToSubscription()
       } else {
-        subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        setTimeout(() => {
+          subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
       }
       return
     }
@@ -132,7 +134,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
           onClick={handleButtonClick}
           className={`group w-full font-bold py-4 px-6 rounded-full shadow-lg transition-all duration-300 transform mb-4 flex items-center justify-center gap-2 ${
             isLimitReached
-              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-xl hover:scale-[1.02]'
+              ? 'bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-600 hover:from-purple-600 hover:via-blue-600 hover:to-indigo-700 text-white hover:shadow-xl hover:scale-[1.02]'
               : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white hover:shadow-xl hover:scale-[1.02]'
           }`}
         >

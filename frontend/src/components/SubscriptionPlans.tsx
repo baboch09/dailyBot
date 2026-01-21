@@ -84,13 +84,13 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
       )}
 
       {/* Табы Месяц/Год */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 overflow-hidden rounded-t-[24px]">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50 overflow-hidden rounded-t-[24px]">
         <button
           onClick={() => setActiveTab('month')}
           className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
             activeTab === 'month'
-              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-md'
+              : 'text-gray-500 dark:text-gray-500 opacity-60 hover:opacity-80'
           }`}
         >
           Месяц
@@ -102,16 +102,18 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
           onClick={() => setActiveTab('year')}
           className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
             activeTab === 'year'
-              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-md'
+              : 'text-gray-500 dark:text-gray-500 opacity-60 hover:opacity-80'
           }`}
         >
-          Год
-          {activeTab === 'year' && savings > 0 && (
-            <span className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
-              Экономия {savingsPercent}%
-            </span>
-          )}
+          <span className="flex items-center justify-center gap-2">
+            Год
+            {savings > 0 && (
+              <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
+                Экономия {savingsPercent}%
+              </span>
+            )}
+          </span>
           {activeTab === 'year' && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"></div>
           )}
