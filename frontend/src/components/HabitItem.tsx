@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Habit } from '../types'
 import { habitsApi } from '../services/api'
 
@@ -71,6 +71,98 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
     const displayHour = hour % 12 || 12
     return `${displayHour}:${minutes} ${ampm}`
   }
+
+  // Определение стадии streak с разными визуальными состояниями
+  const getStreakStage = (streak: number) => {
+    if (streak === 0) {
+      return {
+        emoji: '',
+        label: 'Новая привычка',
+        gradient: 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600',
+        textColor: 'text-gray-600 dark:text-gray-400',
+        showBadge: false
+      }
+    } else if (streak >= 1 && streak < 7) {
+      return {
+        emoji: '🌱',
+        label: 'Начало пути',
+        gradient: 'from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30',
+        textColor: 'text-green-700 dark:text-green-300',
+        showBadge: true
+      }
+    } else if (streak >= 7 && streak < 21) {
+      return {
+        emoji: '🔥',
+        label: 'В процессе',
+        gradient: 'from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30',
+        textColor: 'text-orange-700 dark:text-orange-300',
+        showBadge: true
+      }
+    } else if (streak >= 21 && streak < 66) {
+      return {
+        emoji: '⚡',
+        label: 'Отличный результат',
+        gradient: 'from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30',
+        textColor: 'text-blue-700 dark:text-blue-300',
+        showBadge: true
+      }
+    } else if (streak >= 66 && streak < 100) {
+      return {
+        emoji: '⭐',
+        label: 'Мастер',
+        gradient: 'from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30',
+        textColor: 'text-purple-700 dark:text-purple-300',
+        showBadge: true
+      }
+    } else {
+      return {
+        emoji: '👑',
+        label: 'Легенда',
+        gradient: 'from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30',
+        textColor: 'text-yellow-700 dark:text-yellow-300',
+        showBadge: true
+      }
+    }
+  }
+
+  // Таймер обратного отсчета для последних 30 минут перед напоминанием
+  const [timeUntilReminder, setTimeUntilReminder] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!habit.reminderTime || !habit.reminderEnabled || habit.isCompletedToday) {
+      setTimeUntilReminder(null)
+      return
+    }
+
+    const calculateTimeUntilReminder = () => {
+      const now = new Date()
+      const [hours, minutes] = habit.reminderTime!.split(':').map(Number)
+      const reminderTime = new Date()
+      reminderTime.setHours(hours, minutes, 0, 0)
+      
+      // Если время напоминания уже прошло сегодня, берем завтра
+      if (reminderTime < now) {
+        reminderTime.setDate(reminderTime.getDate() + 1)
+      }
+
+      const diff = reminderTime.getTime() - now.getTime()
+      const diffMinutes = Math.floor(diff / (1000 * 60))
+      
+      // Показываем таймер только в последние 30 минут
+      if (diffMinutes <= 30 && diffMinutes > 0) {
+        setTimeUntilReminder(diffMinutes)
+      } else {
+        setTimeUntilReminder(null)
+      }
+    }
+
+    calculateTimeUntilReminder()
+    const interval = setInterval(calculateTimeUntilReminder, 1000 * 60) // Обновляем каждую минуту
+
+    return () => clearInterval(interval)
+  }, [habit.reminderTime, habit.reminderEnabled, habit.isCompletedToday])
+
+  const streakStage = getStreakStage(habit.streak)
 
   return (
     <div className={`group bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-lg hover:shadow-xl transition-all duration-300 border ${
@@ -207,12 +299,41 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
             )}
             
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 rounded-full">
-                <span className="text-base">🔥</span>
-                <span className="text-sm font-bold text-orange-700 dark:text-orange-300">
-                  {habit.streak} {habit.streak === 1 ? 'день' : habit.streak < 5 ? 'дня' : 'дней'}
-                </span>
-              </div>
+              {/* Streak Badge */}
+              {streakStage.showBadge ? (
+                <div className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r ${streakStage.gradient} rounded-full`}>
+                  {streakStage.emoji && <span className="text-base">{streakStage.emoji}</span>}
+                  <div className="flex flex-col">
+                    <span className={`text-xs font-semibold ${streakStage.textColor}`}>
+                      {streakStage.label}
+                    </span>
+                    <span className={`text-sm font-bold ${streakStage.textColor}`}>
+                      {habit.streak} {habit.streak === 1 ? 'день' : habit.streak < 5 ? 'дня' : 'дней'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-full border border-gray-200 dark:border-gray-600">
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {streakStage.label}
+                  </span>
+                </div>
+              )}
+
+              {/* Таймер обратного отсчета */}
+              {timeUntilReminder !== null && !habit.isCompletedToday && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full border border-amber-200 dark:border-amber-800 animate-pulse">
+                  <span className="text-base">⏱️</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      До напоминания
+                    </span>
+                    <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                      {timeUntilReminder} мин
+                    </span>
+                  </div>
+                </div>
+              )}
               
               <div className="flex items-center gap-2">
                 {!habit.reminderTime && !isEditingReminder && (
