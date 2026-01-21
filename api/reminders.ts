@@ -12,22 +12,30 @@ if (!token) {
 }
 
 // Инициализация Prisma Client
-// Используем динамический импорт для избежания проблем с генерацией
 let prisma: PrismaClient | null = null
 
 function getPrismaClient(): PrismaClient {
   if (!prisma) {
     try {
-      // Нормализуем DATABASE_URL для pooler
-      let databaseUrl = process.env.DATABASE_URL
+      // Нормализуем DATABASE_URL для pooler (как в backend/src/utils/prisma.ts)
+      let databaseUrl = process.env.DATABASE_URL ?? 
+                       process.env.POSTGRES_PRISMA_URL ?? 
+                       process.env.POSTGRES_URL ??
+                       process.env.POSTGRES_URL_NON_POOLING
+
       if (databaseUrl) {
         try {
           const dbUrl = new URL(databaseUrl)
+          // Если используется pooler порт (6543), переключаемся на прямой (5432)
           if (dbUrl.port === '6543') {
             dbUrl.port = '5432'
           }
+          // Добавляем параметр для работы с connection pooling
           if (!dbUrl.searchParams.has('pgbouncer')) {
             dbUrl.searchParams.set('pgbouncer', 'true')
+          }
+          if (!dbUrl.searchParams.has('connect_timeout')) {
+            dbUrl.searchParams.set('connect_timeout', '10')
           }
           databaseUrl = dbUrl.toString()
           process.env.DATABASE_URL = databaseUrl
@@ -36,8 +44,12 @@ function getPrismaClient(): PrismaClient {
         }
       }
 
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL is not set')
+      }
+
       prisma = new PrismaClient({
-        log: ['error', 'warn'],
+        log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
       })
     } catch (error) {
       console.error('Failed to initialize Prisma:', error)
