@@ -21,22 +21,16 @@ fi
 
 echo "Using DATABASE_URL for Prisma generate: ${DATABASE_URL:0:50}..." 
 
+# Установка зависимостей в корне для serverless functions
+npm install
+
+# Backend setup
 cd backend
 npm install
 
 # Prisma generate - используем нормализованный URL (прямой порт 5432)
 # Это решает проблему "prepared statement already exists" при использовании pooler
 npx prisma generate
-
-# Копируем сгенерированный Prisma Client в корень для serverless functions
-# Vercel использует корневой node_modules для serverless functions в api/
-cd ..
-npm install
-
-# Копируем Prisma Client и его зависимости в корневой node_modules
-mkdir -p node_modules/.prisma
-cp -r backend/node_modules/.prisma/client node_modules/.prisma/client 2>/dev/null || true
-cp -r backend/node_modules/@prisma node_modules/@prisma 2>/dev/null || true
 
 # Применяем миграции в проде, чтобы таблицы реально существовали
 # Пропускаем если используется placeholder URL
@@ -68,6 +62,14 @@ fi
 
 npm run build
 
-cd ../frontend
+# Копируем сгенерированный Prisma Client в корень для serverless functions
+# Vercel использует корневой node_modules для serverless functions в api/
+cd ..
+mkdir -p node_modules/.prisma
+cp -r backend/node_modules/.prisma/client node_modules/.prisma/client 2>/dev/null || true
+cp -r backend/node_modules/@prisma node_modules/@prisma 2>/dev/null || true
+
+# Frontend setup
+cd frontend
 npm install
 npm run build
