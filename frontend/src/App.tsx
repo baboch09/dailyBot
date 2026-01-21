@@ -66,6 +66,23 @@ function App() {
 
   useEffect(() => {
     loadHabits()
+    
+    // Обработка редиректа после оплаты
+    const urlParams = new URLSearchParams(window.location.search)
+    const paymentStatus = urlParams.get('payment')
+    if (paymentStatus === 'success') {
+      // Показываем уведомление об успешной оплате
+      setTimeout(() => {
+        alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
+        // Убираем параметр из URL
+        window.history.replaceState({}, '', window.location.pathname)
+      }, 500)
+    } else if (paymentStatus === 'fail') {
+      setTimeout(() => {
+        alert('❌ Ошибка при обработке платежа. Попробуйте еще раз.')
+        window.history.replaceState({}, '', window.location.pathname)
+      }, 500)
+    }
   }, [])
 
   const handleHabitUpdate = () => {
@@ -90,7 +107,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 pb-8">
       <div className="max-w-2xl mx-auto">
-        <header className="mb-8 text-center pt-4">
+        <header className="mb-6 text-center pt-4">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[28px] mb-4 shadow-lg">
             <span className="text-3xl">✨</span>
           </div>
@@ -136,7 +153,7 @@ function App() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {habits.map((habit) => (
               <HabitItem
                 key={habit.id}

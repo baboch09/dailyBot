@@ -37,7 +37,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
     setIsDeleting(true)
     try {
       await habitsApi.delete(habit.id)
-      onDelete(habit.id)
+      // Вызываем onUpdate вместо onDelete для перезагрузки списка
+      onUpdate()
     } catch (error) {
       console.error('Error deleting habit:', error)
       alert('Ошибка при удалении привычки')
@@ -218,7 +219,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
 
             {/* Напоминание */}
             {(habit.reminderTime || isEditingReminder) && (
-              <div className="mb-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100 dark:border-blue-800">
+              <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
                 {!isEditingReminder ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

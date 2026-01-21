@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { habitsApi } from '../services/api'
 import { CreateHabitDto } from '../types'
 
@@ -8,6 +8,7 @@ interface AddHabitFormProps {
 
 const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<CreateHabitDto>({
     name: '',
@@ -50,11 +51,19 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
     }
   }
 
+  useEffect(() => {
+    if (isOpen && formRef.current) {
+      setTimeout(() => {
+        formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 100)
+    }
+  }, [isOpen])
+
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-5 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] mb-6 flex items-center justify-center gap-2"
+        className="group w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold py-4 px-6 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] mb-4 flex items-center justify-center gap-2"
       >
         <svg className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -65,7 +74,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[32px] shadow-xl p-6 mb-6 border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-300">
+    <form ref={formRef} onSubmit={handleSubmit} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-xl p-5 mb-4 border border-gray-100 dark:border-gray-700 animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[20px] flex items-center justify-center">
           <span className="text-xl">➕</span>
@@ -110,14 +119,11 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
         />
       </div>
 
-      <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[20px] border border-blue-100 dark:border-blue-800">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[16px] flex items-center justify-center">
-            <span className="text-xl">⏰</span>
-          </div>
+      <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100 dark:border-blue-800">
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">⏰</span>
           <div className="flex-1">
-            <h3 className="text-sm font-bold text-gray-800 dark:text-gray-200 mb-0.5">Напоминание</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Получайте уведомления в Telegram</p>
+            <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200">Напоминание</h3>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input
@@ -131,16 +137,13 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess }) => {
         </div>
         
         {formData.reminderEnabled && (
-          <div className="mt-4">
-            <label htmlFor="reminderTime" className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
-              Время напоминания
-            </label>
+          <div className="mt-2">
             <input
               id="reminderTime"
               type="time"
               value={reminderTime}
               onChange={(e) => setReminderTime(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-[20px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all"
+              className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm"
             />
           </div>
         )}

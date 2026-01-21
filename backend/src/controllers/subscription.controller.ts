@@ -108,14 +108,62 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid plan ID' })
     }
 
+    // Проверяем, нет ли уже активного платежа в ожидании
+    const pendingPayment = await prisma.payment.findFirst({
+      where: {
+        userId: user.id,
+        status: 'pending'
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (pendingPayment) {
+      // Проверяем статус существующего платежа в ЮКассе
+      if (pendingPayment.yookassaId) {
+        try {
+          const yookassaPayment = await getPayment(SHOP_ID, SECRET_KEY, pendingPayment.yookassaId)
+          
+          // Обновляем статус в БД
+          await prisma.payment.update({
+            where: { id: pendingPayment.id },
+            data: { status: yookassaPayment.status }
+          })
+
+          // Если платеж успешен - возвращаем его
+          if (yookassaPayment.status === 'succeeded') {
+            return res.status(400).json({ 
+              error: 'You already have an active subscription',
+              message: 'У вас уже есть активная подписка'
+            })
+          }
+        } catch (error) {
+          console.error('Error checking payment status:', error)
+        }
+      }
+      
+      // Если платеж все еще pending, возвращаем его
+      if (pendingPayment.status === 'pending') {
+        return res.json({
+          paymentId: pendingPayment.id,
+          yookassaId: pendingPayment.yookassaId || '',
+          amount: pendingPayment.amount,
+          confirmationUrl: '', // Нужно будет получить заново
+          status: pendingPayment.status,
+          message: 'У вас уже есть платеж в обработке'
+        })
+      }
+    }
+
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
     if (!SHOP_ID || !SECRET_KEY) {
       return res.status(500).json({ error: 'YooKassa credentials not configured' })
     }
 
-    const successUrl = process.env.PAYMENT_SUCCESS_URL || `${req.protocol}://${req.get('host')}/payment/success`
-    const failUrl = process.env.PAYMENT_FAIL_URL || `${req.protocol}://${req.get('host')}/payment/fail`
+    // Редирект должен вести на приложение, а не на страницу успеха
+    const webAppUrl = process.env.WEBAPP_URL || process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`
+    const successUrl = `${webAppUrl}?payment=success`
+    const failUrl = `${webAppUrl}?payment=fail`
 
     // Создаем платеж в ЮКассе
     const payment = await createPayment(
@@ -147,6 +195,39 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
         })
       }
     })
+
+    // После создания платежа сразу проверяем его статус (на случай мгновенной оплаты)
+    // Это поможет избежать ситуации с висящими в pending платежами
+    setTimeout(async () => {
+      try {
+        const latestPayment = await getPayment(SHOP_ID, SECRET_KEY, payment.id)
+        if (latestPayment.status !== dbPayment.status) {
+          await prisma.payment.update({
+            where: { id: dbPayment.id },
+            data: { status: latestPayment.status }
+          })
+          
+          // Если платеж успешен - активируем подписку
+          if (latestPayment.status === 'succeeded') {
+            const now = new Date()
+            const expiresAt = new Date(now)
+            expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
+            
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                subscriptionType: 'premium',
+                subscriptionStatus: 'active',
+                subscriptionStartedAt: user.subscriptionStartedAt || now,
+                subscriptionExpiresAt: expiresAt
+              }
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error checking payment status after creation:', error)
+      }
+    }, 5000) // Проверяем через 5 секунд
 
     res.json({
       paymentId: dbPayment.id,

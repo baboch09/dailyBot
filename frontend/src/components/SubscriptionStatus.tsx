@@ -4,9 +4,10 @@ import type { SubscriptionStatus as SubscriptionStatusType } from '../types'
 
 interface SubscriptionStatusProps {
   onClose?: () => void
+  onStatusUpdate?: () => void
 }
 
-export default function SubscriptionStatus({ onClose }: SubscriptionStatusProps) {
+export default function SubscriptionStatus({ onClose, onStatusUpdate }: SubscriptionStatusProps) {
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -62,22 +63,9 @@ export default function SubscriptionStatus({ onClose }: SubscriptionStatusProps)
   const isActive = status.subscriptionStatus === 'active' && status.daysRemaining > 0
 
   return (
-    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[32px] shadow-xl p-8 border border-gray-100 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Подписка</h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
-          >
-            ×
-          </button>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        {/* Статус подписки */}
-        <div className={`p-6 rounded-[24px] ${isActive ? 'bg-gradient-to-br from-blue-500 to-indigo-600' : 'bg-gray-100 dark:bg-gray-700'}`}>
+    <div>
+      <div className="space-y-3">
+        {/* Статус подписки - убираем, т.к. уже показывается в карточке */}
           <div className="flex items-center justify-between mb-2">
             <span className="text-white font-semibold text-lg">
               {isActive ? 'Premium активна' : 'Free тариф'}
@@ -93,17 +81,10 @@ export default function SubscriptionStatus({ onClose }: SubscriptionStatusProps)
               Действует до {new Date(status.subscriptionExpiresAt).toLocaleDateString('ru-RU')}
             </p>
           )}
-          {!isActive && (
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
-              Ограничение: максимум 3 привычки
-            </p>
-          )}
-        </div>
-
         {/* История платежей */}
-        {status.recentPayments.length > 0 && (
+        {status.recentPayments.length > 0 ? (
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
               История платежей
             </h3>
             <div className="space-y-2">
@@ -135,6 +116,10 @@ export default function SubscriptionStatus({ onClose }: SubscriptionStatusProps)
               ))}
             </div>
           </div>
+        ) : (
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+            История платежей пуста
+          </p>
         )}
       </div>
     </div>

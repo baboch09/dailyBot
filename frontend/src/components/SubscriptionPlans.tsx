@@ -5,9 +5,10 @@ import type { SubscriptionPlan } from '../types'
 interface SubscriptionPlansProps {
   onPaymentCreated?: (confirmationUrl: string) => void
   onClose?: () => void
+  onStatusUpdate?: () => void
 }
 
-export default function SubscriptionPlans({ onPaymentCreated, onClose }: SubscriptionPlansProps) {
+export default function SubscriptionPlans({ onPaymentCreated, onClose, onStatusUpdate }: SubscriptionPlansProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -54,36 +55,23 @@ export default function SubscriptionPlans({ onPaymentCreated, onClose }: Subscri
 
   if (loading) {
     return (
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[32px] shadow-xl p-8 border border-gray-100 dark:border-gray-700">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Загрузка тарифов...</p>
-        </div>
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">Загрузка тарифов...</p>
       </div>
     )
   }
 
   return (
-    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[32px] shadow-xl p-8 border border-gray-100 dark:border-gray-700">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Выберите тариф</h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-2xl"
-          >
-            ×
-          </button>
-        )}
-      </div>
+    <div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-[20px]">
-          <p className="text-red-700 dark:text-red-300 font-medium">{error}</p>
+        <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-[16px]">
+          <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2">
         {plans.map((plan) => {
           const isProcessing = processing === plan.id
           const isPopular = plan.id === 'month'
@@ -91,7 +79,7 @@ export default function SubscriptionPlans({ onPaymentCreated, onClose }: Subscri
           return (
             <div
               key={plan.id}
-              className={`relative p-6 rounded-[24px] border-2 transition-all ${
+              className={`relative p-4 rounded-[20px] border-2 transition-all ${
                 isPopular
                   ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20'
                   : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'
@@ -105,22 +93,22 @@ export default function SubscriptionPlans({ onPaymentCreated, onClose }: Subscri
                 </div>
               )}
 
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">
                   {plan.name}
                 </h3>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-4xl font-bold text-gray-900 dark:text-gray-100">
+                  <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                     {plan.price}
                   </span>
                   <span className="text-gray-600 dark:text-gray-400">₽</span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   {plan.durationDays} дней
                 </p>
               </div>
 
-              <ul className="space-y-2 mb-6">
+              <ul className="space-y-1.5 mb-4 text-xs">
                 <li className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <span className="text-green-500">✓</span>
                   Безлимит привычек
@@ -138,7 +126,7 @@ export default function SubscriptionPlans({ onPaymentCreated, onClose }: Subscri
               <button
                 onClick={() => handleSubscribe(plan.id)}
                 disabled={isProcessing || !!processing}
-                className={`w-full py-3 px-4 rounded-[16px] font-semibold transition-all ${
+                className={`w-full py-2.5 px-4 rounded-[14px] text-sm font-semibold transition-all ${
                   isProcessing
                     ? 'bg-gray-400 text-white cursor-not-allowed'
                     : isPopular
@@ -153,9 +141,9 @@ export default function SubscriptionPlans({ onPaymentCreated, onClose }: Subscri
         })}
       </div>
 
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-[20px]">
-        <p className="text-sm text-blue-700 dark:text-blue-300 text-center">
-          💳 Оплата проходит через ЮКассу. Используйте тестовую карту для проверки: 5555 5555 5555 4444
+      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-[16px]">
+        <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
+          💳 Тестовая карта: 5555 5555 5555 4444
         </p>
       </div>
     </div>
