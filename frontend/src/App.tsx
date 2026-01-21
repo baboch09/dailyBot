@@ -181,10 +181,10 @@ function App() {
                 habit={habit}
                 onUpdate={handleHabitUpdate}
                 onDelete={handleHabitDelete}
-                isPremium={subscriptionStatus?.subscriptionStatus === 'active' && 
+                isPremium={!!(subscriptionStatus?.subscriptionStatus === 'active' && 
                           subscriptionStatus?.subscriptionExpiresAt && 
                           new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
-                          (subscriptionStatus?.daysRemaining || 0) > 0}
+                          (subscriptionStatus?.daysRemaining || 0) > 0)}
                 onScrollToSubscription={() => {
                   subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                 }}

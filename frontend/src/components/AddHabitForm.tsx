@@ -226,7 +226,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
           <label className={`relative inline-flex items-center ${!isPremium ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
-              checked={formData.reminderEnabled && isPremium}
+              checked={!!(formData.reminderEnabled && isPremium)}
               disabled={!isPremium}
               onChange={(e) => {
                 if (isPremium) {
