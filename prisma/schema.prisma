@@ -15,6 +15,7 @@ datasource db {
 model User {
   id         String   @id @default(cuid())
   telegramId BigInt   @unique
+  timezone   String   @default("UTC+3") // Часовой пояс пользователя (например, "UTC+3", "UTC+0")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

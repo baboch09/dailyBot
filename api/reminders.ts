@@ -108,11 +108,45 @@ async function checkAndSendReminders() {
   }
 
   const now = new Date()
-  const currentHour = now.getHours()
-  const currentMinute = now.getMinutes()
-  const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`
+  const currentHourUTC = now.getUTCHours()
+  const currentMinuteUTC = now.getUTCMinutes()
+  const currentTimeUTC = `${String(currentHourUTC).padStart(2, '0')}:${String(currentMinuteUTC).padStart(2, '0')}`
   
-  console.log(`🕐 Current time (UTC): ${currentTime}`)
+  console.log(`🕐 Current time (UTC): ${currentTimeUTC}`)
+  
+  /**
+   * Преобразует время из локального часового пояса пользователя в UTC
+   * @param localTime Время в формате "HH:MM" в локальном часовом поясе пользователя
+   * @param timezone Часовой пояс пользователя (например, "UTC+3", "UTC-5")
+   * @returns Время в формате "HH:MM" в UTC
+   */
+  function convertLocalTimeToUTC(localTime: string, timezone: string): string {
+    const [hours, minutes] = localTime.split(':').map(Number)
+    
+    // Парсим часовой пояс (например, "UTC+3" -> +3, "UTC-5" -> -5)
+    const timezoneMatch = timezone.match(/UTC([+-])(\d+)/)
+    if (!timezoneMatch) {
+      console.warn(`Invalid timezone format: ${timezone}, using UTC+3`)
+      return convertLocalTimeToUTC(localTime, "UTC+3")
+    }
+    
+    const sign = timezoneMatch[1] === '+' ? 1 : -1
+    const offset = parseInt(timezoneMatch[2]) * sign
+    
+    // Вычитаем offset, чтобы получить UTC время
+    // Если пользователь в UTC+3 и установил 12:30, то в UTC это будет 09:30
+    let utcHours = hours - offset
+    let utcMinutes = minutes
+    
+    // Обрабатываем переход через границы дня
+    if (utcHours < 0) {
+      utcHours += 24
+    } else if (utcHours >= 24) {
+      utcHours -= 24
+    }
+    
+    return `${String(utcHours).padStart(2, '0')}:${String(utcMinutes).padStart(2, '0')}`
+  }
 
   // Получаем все привычки с включёнными напоминаниями
   const habits = await prisma.habit.findMany({
@@ -138,20 +172,25 @@ async function checkAndSendReminders() {
   let sentCount = 0
 
   for (const habit of habits) {
-    console.log(`🔍 Checking habit: "${habit.name}" - reminderTime: "${habit.reminderTime}"`)
+    const userTimezone = habit.user.timezone || "UTC+3"
+    console.log(`🔍 Checking habit: "${habit.name}" - reminderTime: "${habit.reminderTime}" (user timezone: ${userTimezone})`)
+    
+    // Преобразуем время напоминания из локального времени пользователя в UTC
+    const reminderTimeUTC = convertLocalTimeToUTC(habit.reminderTime!, userTimezone)
+    console.log(`   Reminder time (local): ${habit.reminderTime}, (UTC): ${reminderTimeUTC}`)
     
     // Проверяем, наступило ли время напоминания
     // Учитываем, что cron проверяет каждые 5 минут, поэтому проверяем в диапазоне ±5 минут
-    const [reminderHour, reminderMinute] = habit.reminderTime!.split(':').map(Number)
-    const reminderTimeInMinutes = reminderHour * 60 + reminderMinute
-    const currentTimeInMinutes = currentHour * 60 + currentMinute
+    const [reminderHourUTC, reminderMinuteUTC] = reminderTimeUTC.split(':').map(Number)
+    const reminderTimeInMinutesUTC = reminderHourUTC * 60 + reminderMinuteUTC
+    const currentTimeInMinutesUTC = currentHourUTC * 60 + currentMinuteUTC
     
     // Проверяем, попадает ли текущее время в диапазон напоминания (±5 минут)
     // Это позволяет срабатывать напоминанию даже если cron немного опоздал
-    const timeDifference = Math.abs(currentTimeInMinutes - reminderTimeInMinutes)
-    const isWithinReminderWindow = timeDifference <= 5 && currentTimeInMinutes >= reminderTimeInMinutes
+    const timeDifference = Math.abs(currentTimeInMinutesUTC - reminderTimeInMinutesUTC)
+    const isWithinReminderWindow = timeDifference <= 5 && currentTimeInMinutesUTC >= reminderTimeInMinutesUTC
     
-    console.log(`   Current: ${currentTime} (${currentTimeInMinutes} min), Reminder: ${habit.reminderTime} (${reminderTimeInMinutes} min), Diff: ${timeDifference} min, Within window: ${isWithinReminderWindow}`)
+    console.log(`   Current (UTC): ${currentTimeUTC} (${currentTimeInMinutesUTC} min), Reminder (UTC): ${reminderTimeUTC} (${reminderTimeInMinutesUTC} min), Diff: ${timeDifference} min, Within window: ${isWithinReminderWindow}`)
     
     if (!isWithinReminderWindow) {
       continue
@@ -188,7 +227,7 @@ async function checkAndSendReminders() {
 
   console.log(`📊 Processed ${habits.length} habits, sent ${sentCount} reminders`)
   console.log(`🕐 Check completed at: ${new Date().toISOString()}`)
-  return { processed: habits.length, sent: sentCount, currentTime }
+  return { processed: habits.length, sent: sentCount, currentTime: currentTimeUTC }
 }
 
 // Обработчик для внешнего Cron Job (cron-job.org, EasyCron и т.д.)
