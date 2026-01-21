@@ -12,7 +12,8 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [processing, setProcessing] = useState<string | null>(null)
+  const [processing, setProcessing] = useState(false)
+  const [activeTab, setActiveTab] = useState<'month' | 'year'>('month')
 
   useEffect(() => {
     loadPlans()
@@ -32,14 +33,13 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
     }
   }
 
-  const handleSubscribe = async (planId: string) => {
+  const handleSubscribe = async () => {
     try {
-      setProcessing(planId)
+      setProcessing(true)
       setError('')
-      const response = await subscriptionApi.createPayment({ planId: planId as 'month' | 'year' })
+      const response = await subscriptionApi.createPayment({ planId: activeTab })
       
       if (response.confirmationUrl) {
-        // Открываем страницу оплаты в новом окне или перенаправляем
         if (onPaymentCreated) {
           onPaymentCreated(response.confirmationUrl)
         } else {
@@ -49,102 +49,151 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
     } catch (err: any) {
       console.error('Error creating payment:', err)
       setError(err.response?.data?.error || err.response?.data?.message || 'Ошибка при создании платежа')
-      setProcessing(null)
+      setProcessing(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="text-center py-8">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400 text-sm">Загрузка тарифов...</p>
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[24px] shadow-xl p-6 border border-gray-100 dark:border-gray-700">
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Загрузка тарифов...</p>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div>
+  const monthPlan = plans.find(p => p.id === 'month')
+  const yearPlan = plans.find(p => p.id === 'year')
+  const currentPlan = activeTab === 'month' ? monthPlan : yearPlan
 
+  // Вычисляем выгоду от годовой подписки
+  const monthlyPrice = monthPlan?.price || 99
+  const yearlyPrice = yearPlan?.price || 990
+  const yearlyMonthlyEquivalent = yearlyPrice / 12
+  const savings = (monthlyPrice * 12) - yearlyPrice
+  const savingsPercent = Math.round((savings / (monthlyPrice * 12)) * 100)
+
+  return (
+    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
       {error && (
-        <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-[16px]">
-          <p className="text-red-700 dark:text-red-300 text-sm font-medium">{error}</p>
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800">
+          <p className="text-red-700 dark:text-red-300 text-sm font-medium text-center">{error}</p>
         </div>
       )}
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {plans.map((plan) => {
-          const isProcessing = processing === plan.id
-          const isPopular = plan.id === 'month'
-
-          return (
-            <div
-              key={plan.id}
-              className={`relative p-4 rounded-[20px] border-2 transition-all ${
-                isPopular
-                  ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50'
-              }`}
-            >
-              {isPopular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                    Популярный
-                  </span>
-                </div>
-              )}
-
-              <div className="text-center mb-4">
-                <h3 className="text-lg font-bold text-gray-800 dark:text-gray-200 mb-2">
-                  {plan.name}
-                </h3>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">
-                    {plan.price}
-                  </span>
-                  <span className="text-gray-600 dark:text-gray-400">₽</span>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {plan.durationDays} дней
-                </p>
-              </div>
-
-              <ul className="space-y-1.5 mb-4 text-xs">
-                <li className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="text-green-500">✓</span>
-                  Безлимит привычек
-                </li>
-                <li className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="text-green-500">✓</span>
-                  Все функции доступны
-                </li>
-                <li className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <span className="text-green-500">✓</span>
-                  Напоминания
-                </li>
-              </ul>
-
-              <button
-                onClick={() => handleSubscribe(plan.id)}
-                disabled={isProcessing || !!processing}
-                className={`w-full py-2.5 px-4 rounded-[14px] text-sm font-semibold transition-all ${
-                  isProcessing
-                    ? 'bg-gray-400 text-white cursor-not-allowed'
-                    : isPopular
-                    ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 shadow-lg'
-                    : 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-500'
-                }`}
-              >
-                {isProcessing ? 'Обработка...' : `Оформить подписку`}
-              </button>
-            </div>
-          )
-        })}
+      {/* Табы Месяц/Год */}
+      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+        <button
+          onClick={() => setActiveTab('month')}
+          className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
+            activeTab === 'month'
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+          }`}
+        >
+          Месяц
+          {activeTab === 'month' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"></div>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('year')}
+          className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
+            activeTab === 'year'
+              ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
+          }`}
+        >
+          Год
+          {activeTab === 'year' && savings > 0 && (
+            <span className="ml-2 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
+              Экономия {savingsPercent}%
+            </span>
+          )}
+          {activeTab === 'year' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"></div>
+          )}
+        </button>
       </div>
 
-      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-[16px]">
-        <p className="text-xs text-blue-700 dark:text-blue-300 text-center">
-          💳 Тестовая карта: 5555 5555 5555 4444
-        </p>
+      {/* Контент тарифа */}
+      <div className="p-6">
+        {currentPlan ? (
+          <div className="space-y-6">
+            {/* Цена */}
+            <div className="text-center">
+              <div className="flex items-baseline justify-center gap-2 mb-2">
+                <span className="text-5xl font-bold text-gray-900 dark:text-gray-100">
+                  {currentPlan.price}
+                </span>
+                <span className="text-xl text-gray-600 dark:text-gray-400">₽</span>
+              </div>
+              
+              {activeTab === 'year' && (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {yearlyMonthlyEquivalent.toFixed(0)} ₽/месяц
+                  </p>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <span className="text-green-700 dark:text-green-400 text-sm font-semibold">
+                      💰 Экономия {savings} ₽
+                    </span>
+                  </div>
+                </div>
+              )}
+              
+              {activeTab === 'month' && (
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  за {currentPlan.durationDays} дней
+                </p>
+              )}
+            </div>
+
+            {/* Преимущества */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]">
+                <span className="text-xl">✓</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  Безлимит привычек
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]">
+                <span className="text-xl">✓</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  Все функции доступны
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]">
+                <span className="text-xl">✓</span>
+                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                  Напоминания в Telegram
+                </span>
+              </div>
+            </div>
+
+            {/* Кнопка подписки */}
+            <button
+              onClick={handleSubscribe}
+              disabled={processing}
+              className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-[16px] font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            >
+              {processing ? 'Обработка...' : `Оформить подписку`}
+            </button>
+
+            {/* Информация о тестовой карте */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                💳 Тестовая карта: 5555 5555 5555 4444
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-600 dark:text-gray-400">Тариф не найден</p>
+          </div>
+        )}
       </div>
     </div>
   )

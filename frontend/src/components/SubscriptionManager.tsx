@@ -5,22 +5,11 @@ import { subscriptionApi } from '../services/api'
 import type { SubscriptionStatus as SubscriptionStatusType } from '../types'
 
 export default function SubscriptionManager() {
-  const [activeTab, setActiveTab] = useState<'status' | 'plans'>('status')
+  const [showPlans, setShowPlans] = useState(false)
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null)
 
   useEffect(() => {
     loadStatus()
-    
-    // Проверяем статус платежей в pending при загрузке
-    if (status?.recentPayments) {
-      const pendingPayments = status.recentPayments.filter(p => p.status === 'pending')
-      if (pendingPayments.length > 0) {
-        // Обновляем статус через 5 секунд после загрузки
-        setTimeout(() => {
-          loadStatus()
-        }, 5000)
-      }
-    }
   }, [])
 
   const loadStatus = async () => {
@@ -34,6 +23,10 @@ export default function SubscriptionManager() {
 
   const handlePaymentCreated = (confirmationUrl: string) => {
     window.location.href = confirmationUrl
+  }
+
+  const togglePlans = () => {
+    setShowPlans(!showPlans)
   }
 
   const isActive = status?.subscriptionStatus === 'active' && (status?.daysRemaining || 0) > 0
@@ -78,52 +71,34 @@ export default function SubscriptionManager() {
             </div>
           </div>
           <button
-            onClick={() => setActiveTab(activeTab === 'status' ? 'plans' : 'status')}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+            onClick={togglePlans}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all transform ${
               isActive
-                ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
-                : 'bg-white/90 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700'
-            }`}
+                ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 active:scale-95'
+                : 'bg-white/90 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 active:scale-95'
+            } ${showPlans ? 'rotate-180' : ''}`}
           >
-            {activeTab === 'status' ? 'Обновить' : 'Статус'}
+            ⬆️ Обновить
           </button>
         </div>
       </div>
 
-      {/* Табы */}
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-700">
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => setActiveTab('status')}
-            className={`flex-1 px-4 py-3 text-sm font-semibold transition-all ${
-              activeTab === 'status'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-            }`}
-          >
-            Моя подписка
-          </button>
-          <button
-            onClick={() => setActiveTab('plans')}
-            className={`flex-1 px-4 py-3 text-sm font-semibold transition-all ${
-              activeTab === 'plans'
-                ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
-            }`}
-          >
-            Тарифы
-          </button>
-        </div>
-        <div className="p-4">
-          {activeTab === 'status' && (
-            <SubscriptionStatus onStatusUpdate={loadStatus} />
-          )}
-          {activeTab === 'plans' && (
-            <SubscriptionPlans 
-              onPaymentCreated={handlePaymentCreated}
-              onStatusUpdate={loadStatus}
-            />
-          )}
+      {/* Статус подписки - всегда показываем компактно */}
+      <SubscriptionStatus onStatusUpdate={loadStatus} />
+
+      {/* Анимированный блок с тарифами */}
+      <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
+        showPlans 
+          ? 'max-h-[800px] opacity-100 mb-4' 
+          : 'max-h-0 opacity-0 mb-0'
+      }`}>
+        <div className={`transform transition-transform duration-300 ${
+          showPlans ? 'translate-y-0' : '-translate-y-4'
+        }`}>
+          <SubscriptionPlans 
+            onPaymentCreated={handlePaymentCreated}
+            onStatusUpdate={loadStatus}
+          />
         </div>
       </div>
     </div>
