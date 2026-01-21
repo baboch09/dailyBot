@@ -5,10 +5,10 @@ import { habitsApi } from '../services/api'
 interface HabitItemProps {
   habit: Habit
   onUpdate: () => void
-  onDelete: (id: string) => void
+  onDelete?: (id: string) => void // Оставлено для обратной совместимости, но не используется
 }
 
-const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onDelete }) => {
+const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate }) => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditingReminder, setIsEditingReminder] = useState(false)

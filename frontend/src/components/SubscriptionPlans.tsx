@@ -8,7 +8,7 @@ interface SubscriptionPlansProps {
   onStatusUpdate?: () => void
 }
 
-export default function SubscriptionPlans({ onPaymentCreated, onClose, onStatusUpdate }: SubscriptionPlansProps) {
+export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlansProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

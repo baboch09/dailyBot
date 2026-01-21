@@ -7,7 +7,7 @@ interface SubscriptionStatusProps {
   onStatusUpdate?: () => void
 }
 
-export default function SubscriptionStatus({ onClose, onStatusUpdate }: SubscriptionStatusProps) {
+export default function SubscriptionStatus({}: SubscriptionStatusProps) {
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
