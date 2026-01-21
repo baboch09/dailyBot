@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Habit } from '../types'
 import { habitsApi } from '../services/api'
 
@@ -351,7 +351,6 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   {/* Меню настроек */}
                   <div className="relative habit-menu">
                     <button
-                      ref={menuButtonRef}
                       onClick={() => setShowMenu(!showMenu)}
                       className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                     >
@@ -362,10 +361,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
 
                     {/* Выпадающее меню - открываем вверх, чтобы не перекрывалось следующей привычкой */}
                     {showMenu && (
-                      <div 
-                        ref={menuRef}
-                        className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 rounded-[16px] shadow-xl border border-gray-200 dark:border-gray-700 z-[100] overflow-hidden"
-                      >
+                      <div className="absolute right-0 bottom-full mb-2 w-48 bg-white dark:bg-gray-800 rounded-[16px] shadow-xl border border-gray-200 dark:border-gray-700 z-[100] overflow-hidden">
                         <button
                           onClick={() => {
                             setIsEditingHabit(true)
