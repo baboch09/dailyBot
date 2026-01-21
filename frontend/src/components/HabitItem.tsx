@@ -37,16 +37,6 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
       // Обновляем только через колбэк, без перерисовки всего списка
       if (onComplete) {
         onComplete(habit.id, result.completed)
-        // Обновляем streak из ответа сервера
-        // Используем setTimeout чтобы обновить только после того как локальное состояние обновлено
-        setTimeout(() => {
-          // Обновляем только streak для этой привычки
-          if (onComplete) {
-            // Streak обновляется автоматически через обновление привычки из пропсов
-            // Но нам нужно обновить локальное состояние streak из ответа
-            // Для этого нужно получить актуальные данные привычки
-          }
-        }, 0)
       }
     } catch (error: any) {
       console.error('Error completing habit:', error)
