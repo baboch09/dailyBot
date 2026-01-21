@@ -6,9 +6,11 @@ interface HabitItemProps {
   habit: Habit
   onUpdate: () => void
   onDelete?: (id: string) => void // Оставлено для обратной совместимости, но не используется
+  isPremium?: boolean
+  onScrollToSubscription?: () => void
 }
 
-const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate }) => {
+const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = false, onScrollToSubscription }) => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditingReminder, setIsEditingReminder] = useState(false)
@@ -233,8 +235,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate }) => {
               </p>
             )}
 
-            {/* Напоминание */}
-            {(habit.reminderTime || isEditingReminder) && (
+            {/* Напоминание - показываем только для Premium или если уже установлено */}
+            {isPremium && (habit.reminderTime || isEditingReminder) && (
               <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
                 {!isEditingReminder ? (
                   <div className="flex items-center justify-between">
@@ -267,16 +269,28 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate }) => {
                         <span>⏰</span>
                         <span>Включить напоминание</span>
                       </label>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className={`relative inline-flex items-center ${isPremium ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                         <input
                           type="checkbox"
-                          checked={reminderEnabled}
-                          onChange={(e) => setReminderEnabled(e.target.checked)}
+                          checked={reminderEnabled && isPremium}
+                          disabled={!isPremium}
+                          onChange={(e) => {
+                            if (isPremium) {
+                              setReminderEnabled(e.target.checked)
+                            } else if (onScrollToSubscription) {
+                              onScrollToSubscription()
+                            }
+                          }}
                           className="sr-only peer"
                         />
                         <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
                       </label>
                     </div>
+                    {!isPremium && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        💎 Напоминания доступны только с Premium подпиской
+                      </p>
+                    )}
                     {reminderEnabled && (
                       <div>
                         <label htmlFor={`reminder-${habit.id}`} className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">

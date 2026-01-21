@@ -16,7 +16,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
   const [formData, setFormData] = useState<CreateHabitDto>({
     name: '',
     description: '',
-    reminderEnabled: true
+    reminderEnabled: false // По умолчанию выключено, т.к. только для Premium
   })
   const [reminderTime, setReminderTime] = useState('09:00')
   const [error, setError] = useState('')
@@ -208,24 +208,41 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         />
       </div>
 
-      <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100 dark:border-blue-800">
+      <div className={`mb-4 p-3 rounded-[16px] border ${
+        isPremium 
+          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-100 dark:border-blue-800'
+          : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75'
+      }`}>
         <div className="flex items-center gap-2 mb-3">
           <span className="text-lg">⏰</span>
           <div className="flex-1">
             <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200">Напоминание</h3>
+            {!isPremium && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                💎 Доступно только с Premium подпиской
+              </p>
+            )}
           </div>
-          <label className="relative inline-flex items-center cursor-pointer">
+          <label className={`relative inline-flex items-center ${!isPremium ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
-              checked={formData.reminderEnabled ?? true}
-              onChange={(e) => setFormData({ ...formData, reminderEnabled: e.target.checked })}
+              checked={formData.reminderEnabled && isPremium}
+              disabled={!isPremium}
+              onChange={(e) => {
+                if (isPremium) {
+                  setFormData({ ...formData, reminderEnabled: e.target.checked })
+                } else if (onScrollToSubscription) {
+                  // Если попытались включить без Premium, скроллим к подписке
+                  onScrollToSubscription()
+                }
+              }}
               className="sr-only peer"
             />
             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
           </label>
         </div>
         
-        {formData.reminderEnabled && (
+        {formData.reminderEnabled && isPremium && (
           <div className="mt-2">
             <input
               id="reminderTime"

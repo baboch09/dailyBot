@@ -90,9 +90,6 @@ export default function SubscriptionManager() {
         </div>
       </div>
 
-      {/* Статус подписки - всегда показываем компактно */}
-      <SubscriptionStatus onStatusUpdate={loadStatus} />
-
       {/* Анимированный блок с тарифами */}
       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
         showPlans 
@@ -108,6 +105,9 @@ export default function SubscriptionManager() {
           />
         </div>
       </div>
+
+      {/* История платежей - показываем внизу */}
+      <SubscriptionStatus onStatusUpdate={loadStatus} />
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getWebApp } from './utils/telegram'
-import { Habit } from './types'
-import { habitsApi } from './services/api'
+import { Habit, SubscriptionStatus } from './types'
+import { habitsApi, subscriptionApi } from './services/api'
 import HabitItem from './components/HabitItem'
 import AddHabitForm from './components/AddHabitForm'
 import SubscriptionManager from './components/SubscriptionManager'
@@ -11,6 +11,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const subscriptionRef = useRef<HTMLDivElement>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
 
   // Инициализация Telegram WebApp
   useEffect(() => {
@@ -67,6 +68,7 @@ function App() {
 
   useEffect(() => {
     loadHabits()
+    loadSubscriptionStatus()
     
     // Обработка редиректа после оплаты
     const urlParams = new URLSearchParams(window.location.search)
@@ -77,6 +79,7 @@ function App() {
         alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
         // Убираем параметр из URL
         window.history.replaceState({}, '', window.location.pathname)
+        loadSubscriptionStatus() // Обновляем статус подписки
       }, 500)
     } else if (paymentStatus === 'fail') {
       setTimeout(() => {
@@ -85,6 +88,15 @@ function App() {
       }, 500)
     }
   }, [])
+
+  const loadSubscriptionStatus = async () => {
+    try {
+      const status = await subscriptionApi.getStatus()
+      setSubscriptionStatus(status)
+    } catch (error) {
+      console.error('Error loading subscription status:', error)
+    }
+  }
 
   const handleHabitUpdate = () => {
     loadHabits()
@@ -169,6 +181,13 @@ function App() {
                 habit={habit}
                 onUpdate={handleHabitUpdate}
                 onDelete={handleHabitDelete}
+                isPremium={subscriptionStatus?.subscriptionStatus === 'active' && 
+                          subscriptionStatus?.subscriptionExpiresAt && 
+                          new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
+                          (subscriptionStatus?.daysRemaining || 0) > 0}
+                onScrollToSubscription={() => {
+                  subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }}
               />
             ))}
           </div>

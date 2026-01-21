@@ -118,6 +118,21 @@ export async function createHabit(req: Request, res: Response) {
       }
     })
 
+    // Проверяем, что напоминания доступны только для Premium
+    const now = new Date()
+    const isPremium = 
+      userWithSubscription?.subscriptionStatus === 'active' &&
+      userWithSubscription?.subscriptionExpiresAt &&
+      userWithSubscription.subscriptionExpiresAt > now
+
+    if ((reminderEnabled || reminderTime) && !isPremium) {
+      return res.status(403).json({
+        error: 'Premium subscription required for reminders',
+        message: 'Напоминания доступны только с Premium подпиской',
+        upgradeRequired: true
+      })
+    }
+
     if (!userWithSubscription) {
       return res.status(404).json({ error: 'User not found' })
     }
@@ -195,11 +210,41 @@ export async function updateHabit(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
+    // Проверяем подписку для напоминаний
+    const userWithSubscription = await prisma.user.findUnique({
+      where: { id: user.id }
+    })
+
+    const now = new Date()
+    const isPremium = 
+      userWithSubscription?.subscriptionStatus === 'active' &&
+      userWithSubscription?.subscriptionExpiresAt &&
+      userWithSubscription.subscriptionExpiresAt > now
+
+    // Если пытаются включить/установить напоминание без Premium
+    if ((req.body.reminderEnabled || req.body.reminderTime) && !isPremium) {
+      return res.status(403).json({
+        error: 'Premium subscription required for reminders',
+        message: 'Напоминания доступны только с Premium подпиской',
+        upgradeRequired: true
+      })
+    }
+
     const updateData: any = {}
     if (name !== undefined) updateData.name = name.trim()
     if (description !== undefined) updateData.description = description?.trim() || null
     if ('reminderTime' in req.body) updateData.reminderTime = req.body.reminderTime || null
-    if ('reminderEnabled' in req.body) updateData.reminderEnabled = req.body.reminderEnabled ?? true
+    if ('reminderEnabled' in req.body) {
+      // Если отключают напоминание или у пользователя Premium, разрешаем
+      if (!req.body.reminderEnabled || isPremium) {
+        updateData.reminderEnabled = req.body.reminderEnabled ?? true
+      }
+    }
+    // Если пользователь не Premium, отключаем напоминания
+    if (!isPremium) {
+      updateData.reminderEnabled = false
+      updateData.reminderTime = null
+    }
 
     const habit = await prisma.habit.update({
       where: { id },
