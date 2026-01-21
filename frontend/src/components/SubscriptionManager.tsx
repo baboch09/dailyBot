@@ -7,6 +7,7 @@ import type { SubscriptionStatus as SubscriptionStatusType } from '../types'
 export default function SubscriptionManager() {
   const [showPlans, setShowPlans] = useState(false)
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadStatus()
@@ -14,10 +15,13 @@ export default function SubscriptionManager() {
 
   const loadStatus = async () => {
     try {
+      setLoading(true)
       const data = await subscriptionApi.getStatus()
       setStatus(data)
     } catch (error) {
       console.error('Error loading subscription status:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -42,6 +46,26 @@ export default function SubscriptionManager() {
 
   const isActive = status?.subscriptionStatus === 'active' && (status?.daysRemaining || 0) > 0
   const subscriptionLevel = isActive ? 'Premium' : 'Free'
+
+  // Скелетон загрузки
+  if (loading) {
+    return (
+      <div className="mb-4">
+        <div className="p-4 rounded-[24px] shadow-lg mb-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gray-300/50 dark:bg-gray-600/50 animate-pulse"></div>
+              <div className="space-y-2">
+                <div className="h-4 w-20 bg-gray-300/50 dark:bg-gray-600/50 rounded animate-pulse"></div>
+                <div className="h-3 w-32 bg-gray-300/50 dark:bg-gray-600/50 rounded animate-pulse"></div>
+              </div>
+            </div>
+            <div className="h-9 w-24 bg-gray-300/50 dark:bg-gray-600/50 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mb-4">
