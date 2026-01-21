@@ -14,9 +14,14 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isEditingReminder, setIsEditingReminder] = useState(false)
+  const [isEditingHabit, setIsEditingHabit] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [reminderTime, setReminderTime] = useState(habit.reminderTime || '09:00')
-  const [reminderEnabled, setReminderEnabled] = useState(habit.reminderEnabled ?? true)
+  const [reminderEnabled, setReminderEnabled] = useState(habit.reminderEnabled ?? false)
   const [isUpdatingReminder, setIsUpdatingReminder] = useState(false)
+  const [editingName, setEditingName] = useState(habit.name)
+  const [editingDescription, setEditingDescription] = useState(habit.description || '')
+  const [isUpdatingHabit, setIsUpdatingHabit] = useState(false)
 
   const handleComplete = async () => {
     setIsCompleting(true)
@@ -74,11 +79,41 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
       })
       setIsEditingReminder(false)
       onUpdate()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating reminder:', error)
-      alert('Ошибка при обновлении напоминания')
+      if (error.response?.status === 403 && error.response?.data?.upgradeRequired) {
+        alert('Напоминания доступны только с Premium подпиской')
+        if (onScrollToSubscription) {
+          onScrollToSubscription()
+        }
+      } else {
+        alert('Ошибка при обновлении напоминания')
+      }
     } finally {
       setIsUpdatingReminder(false)
+    }
+  }
+
+  const handleUpdateHabit = async () => {
+    if (!editingName.trim()) {
+      alert('Название привычки обязательно')
+      return
+    }
+
+    setIsUpdatingHabit(true)
+    try {
+      await habitsApi.update(habit.id, {
+        name: editingName.trim(),
+        description: editingDescription.trim() || undefined
+      })
+      setIsEditingHabit(false)
+      setShowMenu(false)
+      onUpdate()
+    } catch (error) {
+      console.error('Error updating habit:', error)
+      alert('Ошибка при обновлении привычки')
+    } finally {
+      setIsUpdatingHabit(false)
     }
   }
 
@@ -148,7 +183,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
   const [timeUntilReminder, setTimeUntilReminder] = useState<number | null>(null)
 
   useEffect(() => {
-    if (!habit.reminderTime || !habit.reminderEnabled || habit.isCompletedToday) {
+    if (!habit.reminderTime || !habit.reminderEnabled || habit.isCompletedToday || !isPremium) {
       setTimeUntilReminder(null)
       return
     }
@@ -179,7 +214,25 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
     const interval = setInterval(calculateTimeUntilReminder, 1000 * 60) // Обновляем каждую минуту
 
     return () => clearInterval(interval)
-  }, [habit.reminderTime, habit.reminderEnabled, habit.isCompletedToday])
+  }, [habit.reminderTime, habit.reminderEnabled, habit.isCompletedToday, isPremium])
+
+  // Закрываем меню при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.habit-menu')) {
+        setShowMenu(false)
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
 
   const streakStage = getStreakStage(habit.streak)
 
@@ -218,192 +271,228 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, isPremium = fals
           </button>
           
           <div className="flex-1 min-w-0">
-            <h3 className={`font-bold text-lg mb-1 transition-all ${
-              habit.isCompletedToday 
-                ? 'line-through text-gray-400 dark:text-gray-500' 
-                : 'text-gray-800 dark:text-gray-200'
-            }`}>
-              {habit.name}
-            </h3>
-            {habit.description && (
-              <p className={`text-sm mb-3 ${
-                habit.isCompletedToday 
-                  ? 'text-gray-400 dark:text-gray-500' 
-                  : 'text-gray-600 dark:text-gray-400'
-              }`}>
-                {habit.description}
-              </p>
-            )}
+            {isEditingHabit ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                    Название <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editingName}
+                    onChange={(e) => setEditingName(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm"
+                    placeholder="Название привычки"
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                    Описание
+                  </label>
+                  <textarea
+                    value={editingDescription}
+                    onChange={(e) => setEditingDescription(e.target.value)}
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm resize-none"
+                    placeholder="Описание (необязательно)"
+                    rows={2}
+                    maxLength={500}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleUpdateHabit}
+                    disabled={isUpdatingHabit}
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isUpdatingHabit ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingHabit(false)
+                      setEditingName(habit.name)
+                      setEditingDescription(habit.description || '')
+                    }}
+                    className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h3 className={`font-bold text-lg transition-all flex-1 ${
+                    habit.isCompletedToday 
+                      ? 'line-through text-gray-400 dark:text-gray-500' 
+                      : 'text-gray-800 dark:text-gray-200'
+                  }`}>
+                    {habit.name}
+                  </h3>
+                  
+                  {/* Меню настроек */}
+                  <div className="relative habit-menu">
+                    <button
+                      onClick={() => setShowMenu(!showMenu)}
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </button>
 
-            {/* Напоминание - показываем только для Premium или если уже установлено */}
-            {isPremium && (habit.reminderTime || isEditingReminder) && (
-              <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
-                {!isEditingReminder ? (
-                  <div className="flex items-center justify-between">
+                    {/* Выпадающее меню */}
+                    {showMenu && (
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-[16px] shadow-xl border border-gray-200 dark:border-gray-700 z-10 overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setIsEditingHabit(true)
+                            setShowMenu(false)
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                          Редактировать
+                        </button>
+                        {isPremium && (
+                          <button
+                            onClick={() => {
+                              setIsEditingReminder(true)
+                              setShowMenu(false)
+                            }}
+                            className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Напоминание
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setShowMenu(false)
+                            handleDelete()
+                          }}
+                          disabled={isDeleting}
+                          className="w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          {isDeleting ? 'Удаление...' : 'Удалить'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {habit.description && (
+                  <p className={`text-sm mb-3 ${
+                    habit.isCompletedToday 
+                      ? 'text-gray-400 dark:text-gray-500' 
+                      : 'text-gray-600 dark:text-gray-400'
+                  }`}>
+                    {habit.description}
+                  </p>
+                )}
+
+                {/* Напоминание - показываем только для Premium */}
+                {isPremium && habit.reminderTime && !isEditingReminder && (
+                  <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">⏰</span>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                          {habit.reminderEnabled 
-                            ? `Напоминание в ${formatTime(habit.reminderTime)}`
-                            : 'Напоминание отключено'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setIsEditingReminder(true)
-                        setReminderTime(habit.reminderTime || '09:00')
-                        setReminderEnabled(habit.reminderEnabled ?? true)
-                      }}
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium px-3 py-1.5 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-[12px] transition-all"
-                    >
-                      Изменить
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        <span>⏰</span>
-                        <span>Включить напоминание</span>
-                      </label>
-                      <label className={`relative inline-flex items-center ${isPremium ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
-                        <input
-                          type="checkbox"
-                          checked={reminderEnabled && isPremium}
-                          disabled={!isPremium}
-                          onChange={(e) => {
-                            if (isPremium) {
-                              setReminderEnabled(e.target.checked)
-                            } else if (onScrollToSubscription) {
-                              onScrollToSubscription()
-                            }
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
-                      </label>
-                    </div>
-                    {!isPremium && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        💎 Напоминания доступны только с Premium подпиской
+                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        {habit.reminderEnabled 
+                          ? `Напоминание в ${formatTime(habit.reminderTime)}`
+                          : 'Напоминание отключено'
+                        }
                       </p>
-                    )}
-                    {reminderEnabled && (
-                      <div>
-                        <label htmlFor={`reminder-${habit.id}`} className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                          Время
-                        </label>
-                        <input
-                          id={`reminder-${habit.id}`}
-                          type="time"
-                          value={reminderTime}
-                          onChange={(e) => setReminderTime(e.target.value)}
-                          className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm"
-                        />
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleUpdateReminder}
-                        disabled={isUpdatingReminder}
-                        className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isUpdatingReminder ? 'Сохранение...' : 'Сохранить'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingReminder(false)
-                          setReminderTime(habit.reminderTime || '09:00')
-                          setReminderEnabled(habit.reminderEnabled ?? true)
-                        }}
-                        className="px-4 py-2 text-xs font-semibold text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all"
-                      >
-                        Отмена
-                      </button>
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-            
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              {/* Streak Badge */}
-              {streakStage.showBadge ? (
-                <div className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r ${streakStage.gradient} rounded-full`}>
-                  {streakStage.emoji && <span className="text-base">{streakStage.emoji}</span>}
-                  <div className="flex flex-col">
-                    <span className={`text-xs font-semibold ${streakStage.textColor}`}>
-                      {streakStage.label}
-                    </span>
-                    <span className={`text-sm font-bold ${streakStage.textColor}`}>
-                      {habit.streak} {habit.streak === 1 ? 'день' : habit.streak < 5 ? 'дня' : 'дней'}
-                    </span>
+
+                {/* Редактирование напоминания */}
+                {isEditingReminder && isPremium && (
+                  <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          <span>⏰</span>
+                          <span>Включить напоминание</span>
+                        </label>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={reminderEnabled}
+                            onChange={(e) => setReminderEnabled(e.target.checked)}
+                            className="sr-only peer"
+                          />
+                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
+                        </label>
+                      </div>
+                      {reminderEnabled && (
+                        <div>
+                          <label htmlFor={`reminder-${habit.id}`} className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                            Время
+                          </label>
+                          <input
+                            id={`reminder-${habit.id}`}
+                            type="time"
+                            value={reminderTime}
+                            onChange={(e) => setReminderTime(e.target.value)}
+                            className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm"
+                          />
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleUpdateReminder}
+                          disabled={isUpdatingReminder}
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isUpdatingReminder ? 'Сохранение...' : 'Сохранить'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsEditingReminder(false)
+                            setReminderTime(habit.reminderTime || '09:00')
+                            setReminderEnabled(habit.reminderEnabled ?? false)
+                          }}
+                          className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-full border border-gray-200 dark:border-gray-600">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                )}
+              </>
+            )}
+
+            {/* Статистика и streak */}
+            <div className="flex items-center gap-3 mt-3">
+              {streakStage.showBadge && (
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r ${streakStage.gradient} border border-opacity-20`}>
+                  <span className="text-xs">{streakStage.emoji}</span>
+                  <span className={`text-xs font-semibold ${streakStage.textColor}`}>
+                    {habit.streak} {habit.streak === 1 ? 'день' : habit.streak < 5 ? 'дня' : 'дней'}
+                  </span>
+                  <span className={`text-xs ${streakStage.textColor} opacity-75`}>
                     {streakStage.label}
                   </span>
                 </div>
               )}
-
-              {/* Таймер обратного отсчета */}
-              {timeUntilReminder !== null && !habit.isCompletedToday && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full border border-amber-200 dark:border-amber-800 animate-pulse">
-                  <span className="text-base">⏱️</span>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                      До напоминания
-                    </span>
-                    <span className="text-sm font-bold text-amber-700 dark:text-amber-300">
-                      {timeUntilReminder} мин
-                    </span>
-                  </div>
+              
+              {timeUntilReminder !== null && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-100 dark:border-orange-800">
+                  <span className="text-xs">⏰</span>
+                  <span className="text-xs font-semibold text-orange-700 dark:text-orange-300">
+                    {timeUntilReminder} {timeUntilReminder === 1 ? 'минута' : timeUntilReminder < 5 ? 'минуты' : 'минут'}
+                  </span>
                 </div>
               )}
-              
-              <div className="flex items-center gap-2">
-                {!habit.reminderTime && !isEditingReminder && (
-                  <button
-                    onClick={() => {
-                      setIsEditingReminder(true)
-                      setReminderTime('09:00')
-                      setReminderEnabled(true)
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-[12px] transition-all"
-                  >
-                    <span className="text-sm">⏰</span>
-                    <span>Напоминание</span>
-                  </button>
-                )}
-                
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[12px] transition-all disabled:opacity-50"
-                >
-                  {isDeleting ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <span>Удаление...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Удалить</span>
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           </div>
         </div>
