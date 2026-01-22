@@ -104,10 +104,21 @@ export async function calculateStreak(habitId: string): Promise<number> {
 
   // Проверяем, выполнена ли привычка в текущем периоде
   const todayLog = normalizedLogs.find(logDate => logDate.getTime() === today.getTime())
+  console.log(`🔍 Streak calculation for habit ${habitId}:`, {
+    totalLogs: logs.length,
+    normalizedLogsCount: normalizedLogs.length,
+    todayPeriod: today.toISOString(),
+    hasTodayLog: !!todayLog,
+    firstLogDate: normalizedLogs[0]?.toISOString()
+  })
 
   // Если в текущем периоде не выполнена, начинаем считать с предыдущего периода
   let checkDate = todayLog ? new Date(today) : getPreviousPeriod(today)
   let streak = todayLog ? 1 : 0
+  console.log(`📊 Starting streak calculation:`, { 
+    checkDate: checkDate.toISOString(), 
+    initialStreak: streak 
+  })
 
   // Идём по логам и считаем последовательные периоды
   for (let i = todayLog ? 1 : 0; i < normalizedLogs.length; i++) {
@@ -123,13 +134,24 @@ export async function calculateStreak(habitId: string): Promise<number> {
 
     if (logDate.getTime() === checkDate.getTime()) {
       streak++
+      console.log(`✅ Found consecutive period:`, { 
+        logDate: logDate.toISOString(), 
+        checkDate: checkDate.toISOString(), 
+        currentStreak: streak 
+      })
       checkDate = getPreviousPeriod(checkDate)
     } else {
       // Если есть пропуск, прекращаем подсчёт
+      console.log(`❌ Streak broken:`, { 
+        logDate: logDate.toISOString(), 
+        expectedDate: checkDate.toISOString(),
+        finalStreak: streak 
+      })
       break
     }
   }
 
+  console.log(`🎯 Final streak for habit ${habitId}: ${streak}`)
   return streak
 }
 

@@ -110,40 +110,30 @@ function App() {
   }
 
   const handleHabitComplete = (habitId: string, completed: boolean, streak?: number) => {
+    console.log(`🔄 Updating habit ${habitId}:`, { completed, streak, previousStreak: habits.find(h => h.id === habitId)?.streak })
+    
     // Обновляем только конкретную привычку без перезагрузки всего списка
     // Используем streak из ответа сервера, так как он уже пересчитан
     setHabits(prevHabits => prevHabits.map(h => {
       if (h.id === habitId) {
-        // Обновляем isCompletedToday и streak из ответа сервера
-        return { 
+        const updatedHabit = { 
           ...h, 
           isCompletedToday: completed,
           streak: streak !== undefined ? streak : h.streak // Используем streak из ответа, если передан
         }
+        console.log(`✅ Updated habit ${habitId} in state:`, { 
+          oldStreak: h.streak, 
+          newStreak: updatedHabit.streak,
+          completed: updatedHabit.isCompletedToday 
+        })
+        return updatedHabit
       }
       return h
     }))
     
-    // Опционально: обновляем все привычки из сервера для полной синхронизации
-    // Но только если streak был передан, чтобы не перезаписать обновленное значение
-    if (streak !== undefined) {
-      // Небольшая задержка для синхронизации БД, но сохраняем streak из ответа
-      setTimeout(() => {
-        habitsApi.getAll().then(updatedHabits => {
-          setHabits(prevHabits => prevHabits.map(h => {
-            if (h.id === habitId) {
-              // Для обновленной привычки сохраняем streak из ответа сервера
-              const updated = updatedHabits.find(uh => uh.id === h.id)
-              return updated ? { ...updated, streak: streak } : h
-            }
-            const updated = updatedHabits.find(uh => uh.id === h.id)
-            return updated ? updated : h
-          }))
-        }).catch(error => {
-          console.error('Error refreshing habits after completion:', error)
-        })
-      }, 300) // Задержка 300ms для синхронизации БД
-    }
+    // НЕ вызываем getAll() сразу, так как он может перезаписать обновленный streak
+    // Вместо этого полагаемся на streak из ответа сервера
+    // Если нужна полная синхронизация, можно вызвать getAll() позже (например, через 2-3 секунды)
   }
 
   const handleHabitDelete = (id: string) => {

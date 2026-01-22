@@ -451,6 +451,8 @@ export async function completeHabitToday(req: Request, res: Response) {
     // Делаем небольшой запрос, чтобы убедиться, что данные синхронизированы
     const streak = await calculateStreak(id)
     console.log(`📊 Calculated streak for habit ${id}: ${streak}`)
+    console.log(`📅 Current period: ${today.toISOString()}`)
+    console.log(`📅 Next period: ${tomorrow.toISOString()}`)
 
     res.json({
       completed: true,
