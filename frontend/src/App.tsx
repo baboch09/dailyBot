@@ -111,6 +111,7 @@ function App() {
 
   const handleHabitComplete = (habitId: string, completed: boolean, streak?: number) => {
     // Обновляем только конкретную привычку без перезагрузки всего списка
+    // Используем streak из ответа сервера, так как он уже пересчитан
     setHabits(prevHabits => prevHabits.map(h => {
       if (h.id === habitId) {
         // Обновляем isCompletedToday и streak из ответа сервера
@@ -123,16 +124,26 @@ function App() {
       return h
     }))
     
-    // Дополнительно обновляем все привычки из сервера для синхронизации (на случай изменений)
-    // Но делаем это асинхронно, чтобы не блокировать UI
-    habitsApi.getAll().then(updatedHabits => {
-      setHabits(prevHabits => prevHabits.map(h => {
-        const updated = updatedHabits.find(uh => uh.id === h.id)
-        return updated ? updated : h
-      }))
-    }).catch(error => {
-      console.error('Error refreshing habits after completion:', error)
-    })
+    // Опционально: обновляем все привычки из сервера для полной синхронизации
+    // Но только если streak был передан, чтобы не перезаписать обновленное значение
+    if (streak !== undefined) {
+      // Небольшая задержка для синхронизации БД, но сохраняем streak из ответа
+      setTimeout(() => {
+        habitsApi.getAll().then(updatedHabits => {
+          setHabits(prevHabits => prevHabits.map(h => {
+            if (h.id === habitId) {
+              // Для обновленной привычки сохраняем streak из ответа сервера
+              const updated = updatedHabits.find(uh => uh.id === h.id)
+              return updated ? { ...updated, streak: streak } : h
+            }
+            const updated = updatedHabits.find(uh => uh.id === h.id)
+            return updated ? updated : h
+          })
+        }).catch(error => {
+          console.error('Error refreshing habits after completion:', error)
+        })
+      }, 300) // Задержка 300ms для синхронизации БД
+    }
   }
 
   const handleHabitDelete = (id: string) => {

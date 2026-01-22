@@ -34,6 +34,11 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     
     try {
       const result = await habitsApi.completeToday(habit.id)
+      console.log(`✅ Habit ${habit.id} completed:`, { 
+        completed: result.completed, 
+        streak: result.streak,
+        previousStreak: habit.streak 
+      })
       // Обновляем через колбэк, передавая и completed и streak
       if (onComplete) {
         onComplete(habit.id, result.completed, result.streak)

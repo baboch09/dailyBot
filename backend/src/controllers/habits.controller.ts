@@ -21,11 +21,11 @@ export async function getHabits(req: Request, res: Response) {
       }
     })
 
-    // Вычисляем дату сегодня один раз
+    // Вычисляем дату сегодня один раз в UTC для корректного сравнения
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    today.setUTCHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
 
     // Добавляем streak и флаг выполнения за сегодня для каждой привычки
     // Используем последовательную обработку вместо Promise.all для уменьшения нагрузки на БД
@@ -34,7 +34,7 @@ export async function getHabits(req: Request, res: Response) {
       const streak = calculateStreakFromLogs(habit.logs, today)
       const isCompletedToday = habit.logs.some(log => {
         const logDate = new Date(log.date)
-        logDate.setHours(0, 0, 0, 0)
+        logDate.setUTCHours(0, 0, 0, 0)
         return logDate.getTime() === today.getTime()
       })
 
@@ -66,26 +66,26 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
     return 0
   }
 
-  // Проверяем, выполнена ли привычка сегодня
-  const todayLog = logs.find(log => {
+  // Нормализуем даты логов к UTC для корректного сравнения
+  const normalizedLogs = logs.map(log => {
     const logDate = new Date(log.date)
-    logDate.setHours(0, 0, 0, 0)
-    return logDate.getTime() === today.getTime()
+    logDate.setUTCHours(0, 0, 0, 0)
+    return logDate
   })
 
+  // Проверяем, выполнена ли привычка сегодня
+  const todayLog = normalizedLogs.find(logDate => logDate.getTime() === today.getTime())
+
   // Если сегодня не выполнена, начинаем считать со вчера
-  let checkDate = todayLog ? today : new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  let checkDate = todayLog ? new Date(today) : new Date(today.getTime() - 24 * 60 * 60 * 1000)
   let streak = todayLog ? 1 : 0
 
   // Идём по логам и считаем последовательные дни
-  for (let i = todayLog ? 1 : 0; i < logs.length; i++) {
-    const logDate = new Date(logs[i].date)
-    logDate.setHours(0, 0, 0, 0)
+  for (let i = todayLog ? 1 : 0; i < normalizedLogs.length; i++) {
+    const logDate = normalizedLogs[i]
+    checkDate.setUTCHours(0, 0, 0, 0)
 
-    const expectedDate = new Date(checkDate)
-    expectedDate.setHours(0, 0, 0, 0)
-
-    if (logDate.getTime() === expectedDate.getTime()) {
+    if (logDate.getTime() === checkDate.getTime()) {
       streak++
       checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000)
     } else {
