@@ -19,7 +19,8 @@ export function getCurrentPeriod(): Date {
     const minutes = now.getUTCMinutes()
     const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
     const period = new Date(now)
-    period.setUTCMinutes(roundedMinutes, 0, 0, 0)
+    period.setUTCMinutes(roundedMinutes, 0, 0)
+    period.setUTCMilliseconds(0)
     // Сохраняем часы и дату, чтобы каждый 5-минутный интервал был уникальным
     return period
   } else {
@@ -93,7 +94,8 @@ export async function calculateStreak(habitId: string): Promise<number> {
       // Сохраняем часы и дату, округляем только минуты
       const minutes = logDate.getUTCMinutes()
       const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      logDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+      logDate.setUTCMinutes(roundedMinutes, 0, 0)
+      logDate.setUTCMilliseconds(0)
     } else {
       logDate.setUTCHours(0, 0, 0, 0)
     }
@@ -113,7 +115,8 @@ export async function calculateStreak(habitId: string): Promise<number> {
     if (TEST_MODE) {
       const minutes = checkDate.getUTCMinutes()
       const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      checkDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+      checkDate.setUTCMinutes(roundedMinutes, 0, 0)
+      checkDate.setUTCMilliseconds(0)
     } else {
       checkDate.setUTCHours(0, 0, 0, 0)
     }

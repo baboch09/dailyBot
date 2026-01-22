@@ -39,7 +39,8 @@ export async function getHabits(req: Request, res: Response) {
         if (TEST_MODE) {
           const minutes = logDate.getUTCMinutes()
           const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-          logDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+          logDate.setUTCMinutes(roundedMinutes, 0, 0)
+          logDate.setUTCMilliseconds(0)
         } else {
           logDate.setUTCHours(0, 0, 0, 0)
         }
@@ -86,7 +87,8 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
       // Округляем до ближайшего 5-минутного интервала
       const minutes = logDate.getUTCMinutes()
       const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      logDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+      logDate.setUTCMinutes(roundedMinutes, 0, 0)
+      logDate.setUTCMilliseconds(0)
     } else {
       logDate.setUTCHours(0, 0, 0, 0)
     }
@@ -106,7 +108,8 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
     if (TEST_MODE) {
       const minutes = checkDate.getUTCMinutes()
       const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      checkDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+      checkDate.setUTCMinutes(roundedMinutes, 0, 0)
+      checkDate.setUTCMilliseconds(0)
     } else {
       checkDate.setUTCHours(0, 0, 0, 0)
     }
