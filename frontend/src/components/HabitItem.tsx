@@ -5,7 +5,7 @@ import { habitsApi } from '../services/api'
 interface HabitItemProps {
   habit: Habit
   onUpdate: () => void
-  onComplete?: (habitId: string, completed: boolean) => void
+  onComplete?: (habitId: string, completed: boolean, streak?: number) => void
   onDelete?: (id: string) => void // Оставлено для обратной совместимости, но не используется
   isPremium?: boolean
   onScrollToSubscription?: () => void
@@ -34,9 +34,9 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     
     try {
       const result = await habitsApi.completeToday(habit.id)
-      // Обновляем только через колбэк, без перерисовки всего списка
+      // Обновляем через колбэк, передавая и completed и streak
       if (onComplete) {
-        onComplete(habit.id, result.completed)
+        onComplete(habit.id, result.completed, result.streak)
       }
     } catch (error: any) {
       console.error('Error completing habit:', error)

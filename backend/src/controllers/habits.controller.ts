@@ -349,10 +349,11 @@ export async function completeHabitToday(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
+    // Получаем текущую дату в UTC (без времени) для корректного сравнения
     const today = new Date()
-    today.setHours(0, 0, 0, 0)
+    today.setUTCHours(0, 0, 0, 0)
     const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
 
     // Проверяем, не отмечена ли уже привычка сегодня
     const existingLog = await prisma.habitLog.findFirst({
@@ -389,12 +390,13 @@ export async function completeHabitToday(req: Request, res: Response) {
     // Создаём новую отметку
     // Используем upsert для предотвращения конфликтов
     try {
-      await prisma.habitLog.create({
+      const newLog = await prisma.habitLog.create({
         data: {
           habitId: id,
           date: today
         }
       })
+      console.log(`✅ Created habit log for habit ${id} on date ${today.toISOString()}, log ID: ${newLog.id}`)
     } catch (createError: any) {
       // Если уже существует (race condition), просто получаем существующую
       if (createError.code === 'P2002') {
@@ -411,12 +413,16 @@ export async function completeHabitToday(req: Request, res: Response) {
         if (!log) {
           throw createError
         }
+        console.log(`⚠️ Habit log already exists for habit ${id} on date ${today.toISOString()}, using existing log`)
       } else {
         throw createError
       }
     }
 
+    // Пересчитываем streak после создания лога
+    // Делаем небольшой запрос, чтобы убедиться, что данные синхронизированы
     const streak = await calculateStreak(id)
+    console.log(`📊 Calculated streak for habit ${id}: ${streak}`)
 
     res.json({
       completed: true,

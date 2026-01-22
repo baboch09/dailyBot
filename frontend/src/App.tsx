@@ -109,17 +109,22 @@ function App() {
     loadHabits()
   }
 
-  const handleHabitComplete = (habitId: string, completed: boolean) => {
+  const handleHabitComplete = (habitId: string, completed: boolean, streak?: number) => {
     // Обновляем только конкретную привычку без перезагрузки всего списка
     setHabits(prevHabits => prevHabits.map(h => {
       if (h.id === habitId) {
-        // Обновляем только isCompletedToday, streak будет обновлен из ответа сервера
-        return { ...h, isCompletedToday: completed }
+        // Обновляем isCompletedToday и streak из ответа сервера
+        return { 
+          ...h, 
+          isCompletedToday: completed,
+          streak: streak !== undefined ? streak : h.streak // Используем streak из ответа, если передан
+        }
       }
       return h
     }))
     
-    // Обновляем streak из сервера асинхронно, но только для этой привычки
+    // Дополнительно обновляем все привычки из сервера для синхронизации (на случай изменений)
+    // Но делаем это асинхронно, чтобы не блокировать UI
     habitsApi.getAll().then(updatedHabits => {
       setHabits(prevHabits => prevHabits.map(h => {
         const updated = updatedHabits.find(uh => uh.id === h.id)

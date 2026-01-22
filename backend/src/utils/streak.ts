@@ -14,30 +14,30 @@ export async function calculateStreak(habitId: string): Promise<number> {
     return 0
   }
 
-  // Получаем текущую дату (без времени)
+  // Получаем текущую дату (без времени) в UTC
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  today.setUTCHours(0, 0, 0, 0)
 
-  // Проверяем, выполнена ли привычка сегодня
-  const todayLog = logs.find(log => {
+  // Нормализуем даты логов к UTC для корректного сравнения
+  const normalizedLogs = logs.map(log => {
     const logDate = new Date(log.date)
-    logDate.setHours(0, 0, 0, 0)
-    return logDate.getTime() === today.getTime()
+    logDate.setUTCHours(0, 0, 0, 0)
+    return logDate
   })
 
+  // Проверяем, выполнена ли привычка сегодня
+  const todayLog = normalizedLogs.find(logDate => logDate.getTime() === today.getTime())
+
   // Если сегодня не выполнена, начинаем считать со вчера
-  let checkDate = todayLog ? today : new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  let checkDate = todayLog ? new Date(today) : new Date(today.getTime() - 24 * 60 * 60 * 1000)
   let streak = todayLog ? 1 : 0
 
   // Идём по логам и считаем последовательные дни
-  for (let i = todayLog ? 1 : 0; i < logs.length; i++) {
-    const logDate = new Date(logs[i].date)
-    logDate.setHours(0, 0, 0, 0)
+  for (let i = todayLog ? 1 : 0; i < normalizedLogs.length; i++) {
+    const logDate = normalizedLogs[i]
+    checkDate.setUTCHours(0, 0, 0, 0)
 
-    const expectedDate = new Date(checkDate)
-    expectedDate.setHours(0, 0, 0, 0)
-
-    if (logDate.getTime() === expectedDate.getTime()) {
+    if (logDate.getTime() === checkDate.getTime()) {
       streak++
       checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000)
     } else {
