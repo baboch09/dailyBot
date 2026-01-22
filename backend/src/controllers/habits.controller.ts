@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
-import { calculateStreak, isCompletedToday } from '../utils/streak'
+import { calculateStreak, isCompletedToday, getCurrentPeriod, getNextPeriod, getPreviousPeriod } from '../utils/streak'
 import { validationResult } from 'express-validator'
 
 /**
@@ -21,11 +21,10 @@ export async function getHabits(req: Request, res: Response) {
       }
     })
 
-    // Вычисляем дату сегодня один раз в UTC для корректного сравнения
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+    // ТЕСТОВЫЙ РЕЖИМ: используем текущий период (5 минут) вместо дня
+    // TODO: УДАЛИТЬ ПОСЛЕ ТЕСТИРОВАНИЯ - вернуть к реальным дням
+    const today = getCurrentPeriod()
+    const tomorrow = getNextPeriod(today)
 
     // Добавляем streak и флаг выполнения за сегодня для каждой привычки
     // Используем последовательную обработку вместо Promise.all для уменьшения нагрузки на БД
@@ -34,7 +33,16 @@ export async function getHabits(req: Request, res: Response) {
       const streak = calculateStreakFromLogs(habit.logs, today)
       const isCompletedToday = habit.logs.some(log => {
         const logDate = new Date(log.date)
-        logDate.setUTCHours(0, 0, 0, 0)
+        // ТЕСТОВЫЙ РЕЖИМ: нормализуем к текущему периоду (5 минут)
+        const TEST_MODE = true // TODO: Установить в false после тестирования
+        const PERIOD_MINUTES = 5
+        if (TEST_MODE) {
+          const minutes = logDate.getUTCMinutes()
+          const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
+          logDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+        } else {
+          logDate.setUTCHours(0, 0, 0, 0)
+        }
         return logDate.getTime() === today.getTime()
       })
 
@@ -60,34 +68,52 @@ export async function getHabits(req: Request, res: Response) {
 
 /**
  * Вспомогательная функция для вычисления streak из логов (без запроса к БД)
+ * ТЕСТОВЫЙ РЕЖИМ: использует 5-минутные интервалы вместо дней
  */
 function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): number {
   if (logs.length === 0) {
     return 0
   }
 
-  // Нормализуем даты логов к UTC для корректного сравнения
+  // ТЕСТОВЫЙ РЕЖИМ: нормализуем даты логов к текущему периоду (5 минут) вместо дня
+  // TODO: УДАЛИТЬ ПОСЛЕ ТЕСТИРОВАНИЯ - вернуть к нормализации по дням
+  const TEST_MODE = true // TODO: Установить в false после тестирования
+  const PERIOD_MINUTES = 5
+  
   const normalizedLogs = logs.map(log => {
     const logDate = new Date(log.date)
-    logDate.setUTCHours(0, 0, 0, 0)
+    if (TEST_MODE) {
+      // Округляем до ближайшего 5-минутного интервала
+      const minutes = logDate.getUTCMinutes()
+      const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
+      logDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+    } else {
+      logDate.setUTCHours(0, 0, 0, 0)
+    }
     return logDate
   })
 
-  // Проверяем, выполнена ли привычка сегодня
+  // Проверяем, выполнена ли привычка в текущем периоде
   const todayLog = normalizedLogs.find(logDate => logDate.getTime() === today.getTime())
 
-  // Если сегодня не выполнена, начинаем считать со вчера
-  let checkDate = todayLog ? new Date(today) : new Date(today.getTime() - 24 * 60 * 60 * 1000)
+  // Если в текущем периоде не выполнена, начинаем считать с предыдущего периода
+  let checkDate = todayLog ? new Date(today) : getPreviousPeriod(today)
   let streak = todayLog ? 1 : 0
 
-  // Идём по логам и считаем последовательные дни
+  // Идём по логам и считаем последовательные периоды
   for (let i = todayLog ? 1 : 0; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
-    checkDate.setUTCHours(0, 0, 0, 0)
+    if (TEST_MODE) {
+      const minutes = checkDate.getUTCMinutes()
+      const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
+      checkDate.setUTCMinutes(roundedMinutes, 0, 0, 0)
+    } else {
+      checkDate.setUTCHours(0, 0, 0, 0)
+    }
 
     if (logDate.getTime() === checkDate.getTime()) {
       streak++
-      checkDate = new Date(checkDate.getTime() - 24 * 60 * 60 * 1000)
+      checkDate = getPreviousPeriod(checkDate)
     } else {
       // Если есть пропуск, прекращаем подсчёт
       break
@@ -349,11 +375,10 @@ export async function completeHabitToday(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
-    // Получаем текущую дату в UTC (без времени) для корректного сравнения
-    const today = new Date()
-    today.setUTCHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1)
+    // ТЕСТОВЫЙ РЕЖИМ: используем текущий период (5 минут) вместо дня
+    // TODO: УДАЛИТЬ ПОСЛЕ ТЕСТИРОВАНИЯ - вернуть к реальным дням
+    const today = getCurrentPeriod()
+    const tomorrow = getNextPeriod(today)
 
     // Проверяем, не отмечена ли уже привычка сегодня
     const existingLog = await prisma.habitLog.findFirst({
