@@ -138,7 +138,7 @@ function App() {
             }
             const updated = updatedHabits.find(uh => uh.id === h.id)
             return updated ? updated : h
-          })
+          }))
         }).catch(error => {
           console.error('Error refreshing habits after completion:', error)
         })
