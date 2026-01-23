@@ -68,7 +68,12 @@ export async function webhook(req: Request, res: Response) {
       console.error('❌ YooKassa credentials not configured')
       return
     }
-    const latestPayment = await getPayment(SHOP_ID, SECRET_KEY, payment.id)
+    
+    // После проверки TypeScript знает, что они не undefined
+    const shopId = SHOP_ID
+    const secretKey = SECRET_KEY
+    
+    const latestPayment = await getPayment(shopId, secretKey, payment.id)
 
     // Обновляем статус платежа
     await prisma.payment.update({

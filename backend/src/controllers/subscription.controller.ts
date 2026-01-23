@@ -129,7 +129,7 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     if (pendingPayment) {
       // Проверяем статус существующего платежа в ЮКассе
-      if (pendingPayment.yookassaId) {
+      if (pendingPayment.yookassaId && SHOP_ID && SECRET_KEY) {
         try {
           const yookassaPayment = await getPayment(SHOP_ID, SECRET_KEY, pendingPayment.yookassaId)
           
@@ -174,6 +174,10 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       })
     }
 
+    // После проверки TypeScript знает, что они не undefined
+    const shopId = SHOP_ID
+    const secretKey = SECRET_KEY
+
     // Редирект должен вести на приложение, а не на страницу успеха
     const webAppUrl = process.env.WEBAPP_URL || process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`
     const successUrl = `${webAppUrl}?payment=success`
@@ -181,8 +185,8 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     // Создаем платеж в ЮКассе
     const payment = await createPayment(
-      SHOP_ID,
-      SECRET_KEY,
+      shopId,
+      secretKey,
       plan.price,
       `Подписка "${plan.name}" - Трекер привычек`,
       successUrl,
@@ -218,9 +222,9 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       // Только для локальной разработки или если явно включено
       setTimeout(async () => {
         try {
-          if (!SHOP_ID || !SECRET_KEY) return
+          if (!shopId || !secretKey) return
           
-          const latestPayment = await getPayment(SHOP_ID, SECRET_KEY, payment.id)
+          const latestPayment = await getPayment(shopId, secretKey, payment.id)
           if (latestPayment.status !== dbPayment.status) {
             await prisma.payment.update({
               where: { id: dbPayment.id },
@@ -298,8 +302,12 @@ export async function checkPaymentStatus(req: Request, res: Response) {
       return res.status(500).json({ error: 'YooKassa credentials not configured' })
     }
 
+    // После проверки TypeScript знает, что они не undefined
+    const shopId = SHOP_ID
+    const secretKey = SECRET_KEY
+
     // Получаем актуальный статус из ЮКассы
-    const payment = await getPayment(SHOP_ID, SECRET_KEY, dbPayment.yookassaId)
+    const payment = await getPayment(shopId, secretKey, dbPayment.yookassaId)
 
     // Обновляем статус в БД
     await prisma.payment.update({
