@@ -16,9 +16,19 @@ export const createHabitValidation: ValidationChain[] = [
     .isLength({ max: 500 })
     .withMessage('Описание не должно превышать 500 символов'),
   body('reminderTime')
-    .optional()
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage('Время напоминания должно быть в формате HH:MM (например, 09:30)'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Если значение не передано, null или пустая строка - разрешаем
+      if (!value || value === '' || value === null) {
+        return true
+      }
+      // Если передано - проверяем формат
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+      if (!timeRegex.test(value)) {
+        throw new Error('Время напоминания должно быть в формате HH:MM (например, 09:30)')
+      }
+      return true
+    }),
   body('reminderEnabled')
     .optional()
     .isBoolean()
@@ -42,9 +52,19 @@ export const updateHabitValidation: ValidationChain[] = [
     .isLength({ max: 500 })
     .withMessage('Описание не должно превышать 500 символов'),
   body('reminderTime')
-    .optional()
-    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
-    .withMessage('Время напоминания должно быть в формате HH:MM (например, 09:30)'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Если значение не передано, null или пустая строка - разрешаем
+      if (!value || value === '' || value === null) {
+        return true
+      }
+      // Если передано - проверяем формат
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+      if (!timeRegex.test(value)) {
+        throw new Error('Время напоминания должно быть в формате HH:MM (например, 09:30)')
+      }
+      return true
+    }),
   body('reminderEnabled')
     .optional()
     .isBoolean()

@@ -182,15 +182,24 @@ export async function createHabit(req: Request, res: Response) {
         userWithSubscription.subscriptionExpiresAt &&
         userWithSubscription.subscriptionExpiresAt > currentTime
 
-      // Проверяем, что напоминания доступны только для Premium
-      if ((reminderEnabled || reminderTime) && !hasPremium) {
-        throw new Error('PREMIUM_REQUIRED_FOR_REMINDERS')
-      }
-
-      // Проверяем лимит Free плана
+      // Проверяем лимит Free плана (делаем это ДО проверки напоминаний)
       if (!hasPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
         throw new Error('FREE_PLAN_LIMIT_REACHED')
       }
+
+      // Проверяем, что напоминания доступны только для Premium
+      // Напоминания считаются включенными, если:
+      // 1. reminderEnabled явно true ИЛИ
+      // 2. передан reminderTime (не null и не пустая строка)
+      const wantsReminders = reminderEnabled === true || (reminderTime && reminderTime.trim() !== '')
+      
+      if (wantsReminders && !hasPremium) {
+        throw new Error('PREMIUM_REQUIRED_FOR_REMINDERS')
+      }
+
+      // Для free пользователей всегда отключаем напоминания
+      const finalReminderEnabled = hasPremium ? (reminderEnabled ?? false) : false
+      const finalReminderTime = hasPremium ? (reminderTime?.trim() || null) : null
 
       // Создаём привычку
       return await tx.habit.create({
@@ -198,8 +207,8 @@ export async function createHabit(req: Request, res: Response) {
           userId: user.id,
           name: trimmedName,
           description: description?.trim() || null,
-          reminderTime: reminderTime || null,
-          reminderEnabled: reminderEnabled ?? true
+          reminderTime: finalReminderTime,
+          reminderEnabled: finalReminderEnabled
         }
       })
     })
