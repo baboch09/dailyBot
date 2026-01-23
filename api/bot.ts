@@ -7,6 +7,8 @@ const webAppUrl = process.env.WEBAPP_URL || 'https://daily-bot-drab.vercel.app'
 
 if (!token) {
   console.error('❌ TELEGRAM_BOT_TOKEN is not set')
+  // В serverless функциях не можем использовать process.exit()
+  // Но логируем ошибку и бот не будет работать
 }
 
 // Создаём экземпляр бота без polling (для webhooks)

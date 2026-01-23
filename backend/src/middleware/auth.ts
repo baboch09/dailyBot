@@ -51,7 +51,7 @@ export async function authenticateUser(req: Request, res: Response, next: NextFu
     }
 
     // Добавляем пользователя в request для использования в контроллерах
-    ;(req as any).user = user
+    req.user = user
 
     next()
   } catch (error: any) {

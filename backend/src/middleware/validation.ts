@@ -14,7 +14,15 @@ export const createHabitValidation: ValidationChain[] = [
     .optional()
     .trim()
     .isLength({ max: 500 })
-    .withMessage('Описание не должно превышать 500 символов')
+    .withMessage('Описание не должно превышать 500 символов'),
+  body('reminderTime')
+    .optional()
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Время напоминания должно быть в формате HH:MM (например, 09:30)'),
+  body('reminderEnabled')
+    .optional()
+    .isBoolean()
+    .withMessage('reminderEnabled должен быть boolean')
 ]
 
 /**
@@ -32,5 +40,13 @@ export const updateHabitValidation: ValidationChain[] = [
     .optional()
     .trim()
     .isLength({ max: 500 })
-    .withMessage('Описание не должно превышать 500 символов')
+    .withMessage('Описание не должно превышать 500 символов'),
+  body('reminderTime')
+    .optional()
+    .matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)
+    .withMessage('Время напоминания должно быть в формате HH:MM (например, 09:30)'),
+  body('reminderEnabled')
+    .optional()
+    .isBoolean()
+    .withMessage('reminderEnabled должен быть boolean')
 ]

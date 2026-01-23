@@ -112,15 +112,34 @@ export async function getPayment(
 /**
  * Валидация подписи webhook от ЮКассы
  * Важно: в реальном проекте нужно проверять подпись для безопасности
+ * 
+ * Документация: https://yookassa.ru/developers/payments/payment-notifications
+ * 
+ * Примечание: В тестовом режиме подпись может отсутствовать или быть некорректной,
+ * поэтому для тестирования пропускаем проверку.
  */
 export function validateWebhookSignature(data: any, signature: string): boolean {
-  // TODO: Реализовать проверку подписи webhook
-  // Для тестового режима можно пропустить
+  // Для тестового режима пропускаем проверку
   if (process.env.YUKASSA_TEST_MODE === 'true') {
+    console.log('⚠️ Test mode: skipping webhook signature validation')
     return true
   }
   
-  // В продакшене нужно проверять подпись
-  // Документация: https://yookassa.ru/developers/payments/payment-notifications
+  // В продакшене обязательно проверяем подпись
+  if (!signature) {
+    console.error('❌ Webhook signature is missing')
+    return false
+  }
+  
+  // TODO: Реализовать полную проверку подписи согласно документации ЮКассы
+  // Для этого нужно:
+  // 1. Получить секретный ключ из переменных окружения
+  // 2. Вычислить HMAC-SHA256 подпись из тела запроса
+  // 3. Сравнить с полученной подписью
+  // 
+  // Пока что в продакшене требуем наличие подписи, но не проверяем её корректность
+  // Это временное решение - нужно реализовать полную проверку перед продакшеном
+  
+  console.warn('⚠️ Webhook signature validation not fully implemented - signature present but not verified')
   return true
 }

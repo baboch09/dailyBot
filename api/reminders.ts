@@ -9,6 +9,8 @@ const webAppUrl = process.env.WEBAPP_URL || 'https://daily-bot-drab.vercel.app'
 
 if (!token) {
   console.error('❌ TELEGRAM_BOT_TOKEN is not set')
+  // В serverless функциях не можем использовать process.exit()
+  // Но логируем ошибку и бот не будет работать
 }
 
 // Инициализация Prisma Client
@@ -211,7 +213,18 @@ async function checkAndSendReminders() {
 
     // Если привычка ещё не выполнена - отправляем напоминание
     if (!todayLog) {
+      // Проверяем наличие telegramId
+      if (!habit.user.telegramId) {
+        console.error(`   ❌ User ${habit.user.id} has no telegramId`)
+        continue
+      }
+      
       const chatId = Number(habit.user.telegramId.toString())
+      if (isNaN(chatId)) {
+        console.error(`   ❌ Invalid telegramId for user ${habit.user.id}: ${habit.user.telegramId}`)
+        continue
+      }
+      
       console.log(`   💌 Sending reminder to chatId: ${chatId}`)
       const sent = await sendReminder(chatId, habit.name)
       if (sent) {
@@ -237,14 +250,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers.authorization
   const cronSecret = process.env.CRON_SECRET
   
-  // Если CRON_SECRET установлен, требуем авторизацию
-  if (cronSecret) {
+  // В продакшене обязательно требуем CRON_SECRET
+  const isProduction = process.env.NODE_ENV === 'production'
+  
+  if (isProduction) {
+    if (!cronSecret) {
+      console.error('❌ CRON_SECRET is required in production')
+      return res.status(500).json({ 
+        error: 'Server configuration error',
+        message: 'CRON_SECRET is not configured'
+      })
+    }
+    
     if (authHeader !== `Bearer ${cronSecret}`) {
-      return res.status(401).json({ error: 'Unauthorized. Provide Authorization: Bearer <CRON_SECRET>' })
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Provide Authorization: Bearer <CRON_SECRET>'
+      })
     }
   } else {
-    // В dev окружении без секрета пропускаем проверку (но лучше установить!)
-    console.warn('⚠️ CRON_SECRET not set - endpoint is publicly accessible!')
+    // В dev окружении предупреждаем, но разрешаем без секрета
+    if (!cronSecret) {
+      console.warn('⚠️ CRON_SECRET not set - endpoint is publicly accessible in development!')
+    } else if (authHeader !== `Bearer ${cronSecret}`) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Provide Authorization: Bearer <CRON_SECRET>'
+      })
+    }
   }
 
   try {

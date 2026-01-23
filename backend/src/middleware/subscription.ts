@@ -1,16 +1,64 @@
 import { Request, Response, NextFunction } from 'express'
 import prisma from '../utils/prisma'
 
+// Константы для лимитов
+export const FREE_HABITS_LIMIT = 3
+
+/**
+ * Проверяет, активна ли подписка пользователя
+ */
+export function isSubscriptionActive(subscriptionStatus: string | null, subscriptionExpiresAt: Date | null): boolean {
+  if (!subscriptionStatus || !subscriptionExpiresAt) {
+    return false
+  }
+  
+  const now = new Date()
+  return subscriptionStatus === 'active' && subscriptionExpiresAt > now
+}
+
 /**
  * Middleware для проверки активной подписки
  * Блокирует доступ к premium функциям если подписка неактивна
  */
 export async function checkSubscription(req: Request, res: Response, next: NextFunction) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
 
-    const userWithSubscription = await prisma.user.findUnique({
-      where: { id: user.id }
+    // Используем транзакцию для атомарной проверки и обновления статуса
+    const userWithSubscription = await prisma.$transaction(async (tx) => {
+      const userData = await tx.user.findUnique({
+        where: { id: user.id }
+      })
+
+      if (!userData) {
+        return null
+      }
+
+      const now = new Date()
+      const isActive = isSubscriptionActive(
+        userData.subscriptionStatus,
+        userData.subscriptionExpiresAt
+      )
+
+      // Автоматически обновляем статус если подписка истекла
+      // Используем updateMany для атомарности (обновляем только если статус все еще 'active')
+      if (!isActive && userData.subscriptionStatus === 'active') {
+        await tx.user.updateMany({
+          where: { 
+            id: user.id,
+            subscriptionStatus: 'active' // Дополнительная проверка для предотвращения race condition
+          },
+          data: { subscriptionStatus: 'expired' }
+        })
+        // Обновляем локальную копию
+        userData.subscriptionStatus = 'expired'
+      }
+
+      return userData
     })
 
     if (!userWithSubscription) {
@@ -18,18 +66,10 @@ export async function checkSubscription(req: Request, res: Response, next: NextF
     }
 
     const now = new Date()
-    const isActive = 
-      userWithSubscription.subscriptionStatus === 'active' &&
-      userWithSubscription.subscriptionExpiresAt &&
-      userWithSubscription.subscriptionExpiresAt > now
-
-    // Автоматически обновляем статус если подписка истекла
-    if (!isActive && userWithSubscription.subscriptionStatus === 'active') {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { subscriptionStatus: 'expired' }
-      })
-    }
+    const isActive = isSubscriptionActive(
+      userWithSubscription.subscriptionStatus,
+      userWithSubscription.subscriptionExpiresAt
+    )
 
     if (!isActive) {
       return res.status(403).json({
@@ -52,7 +92,11 @@ export async function checkSubscription(req: Request, res: Response, next: NextF
  */
 export async function checkFreeLimits(req: Request, res: Response, next: NextFunction) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
 
     const userWithSubscription = await prisma.user.findUnique({
       where: { id: user.id },
@@ -66,13 +110,10 @@ export async function checkFreeLimits(req: Request, res: Response, next: NextFun
     }
 
     const now = new Date()
-    const isPremium = 
-      userWithSubscription.subscriptionStatus === 'active' &&
-      userWithSubscription.subscriptionExpiresAt &&
-      userWithSubscription.subscriptionExpiresAt > now
-
-    // Для free пользователей: максимум 3 привычки
-    const FREE_HABITS_LIMIT = 3
+    const isPremium = isSubscriptionActive(
+      userWithSubscription.subscriptionStatus,
+      userWithSubscription.subscriptionExpiresAt
+    )
 
     if (!isPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
       return res.status(403).json({

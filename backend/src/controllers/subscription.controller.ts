@@ -2,8 +2,9 @@ import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
 import { createPayment, getPayment } from '../utils/yookassa'
 
-const SHOP_ID = process.env.YUKASSA_SHOP_ID!
-const SECRET_KEY = process.env.YUKASSA_SECRET_KEY!
+// Проверяем наличие обязательных переменных окружения
+const SHOP_ID = process.env.YUKASSA_SHOP_ID
+const SECRET_KEY = process.env.YUKASSA_SECRET_KEY
 
 // Тарифы подписки
 const SUBSCRIPTION_PLANS = {
@@ -24,7 +25,11 @@ const SUBSCRIPTION_PLANS = {
  */
 export async function getSubscriptionStatus(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
 
     const userWithSubscription = await prisma.user.findUnique({
       where: { id: user.id },
@@ -101,7 +106,12 @@ export async function getSubscriptionPlans(req: Request, res: Response) {
  */
 export async function createSubscriptionPayment(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { planId } = req.body
 
     if (!planId || !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]) {
@@ -157,7 +167,11 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
     if (!SHOP_ID || !SECRET_KEY) {
-      return res.status(500).json({ error: 'YooKassa credentials not configured' })
+      console.error('❌ YUKASSA_SHOP_ID or YUKASSA_SECRET_KEY is not set')
+      return res.status(500).json({ 
+        error: 'Payment service not configured',
+        message: 'YooKassa credentials are missing'
+      })
     }
 
     // Редирект должен вести на приложение, а не на страницу успеха
@@ -196,38 +210,45 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       }
     })
 
-    // После создания платежа сразу проверяем его статус (на случай мгновенной оплаты)
-    // Это поможет избежать ситуации с висящими в pending платежами
-    setTimeout(async () => {
-      try {
-        const latestPayment = await getPayment(SHOP_ID, SECRET_KEY, payment.id)
-        if (latestPayment.status !== dbPayment.status) {
-          await prisma.payment.update({
-            where: { id: dbPayment.id },
-            data: { status: latestPayment.status }
-          })
+    // ВАЖНО: setTimeout в serverless функциях может не выполниться, если функция завершится раньше
+    // В продакшене лучше использовать очередь задач (Vercel Queue, Bull и т.д.) или полагаться на webhook
+    // Пока оставляем для локальной разработки, но в продакшене это не сработает надежно
+    // Webhook от ЮКассы обработает обновление статуса платежа
+    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_PAYMENT_POLLING === 'true') {
+      // Только для локальной разработки или если явно включено
+      setTimeout(async () => {
+        try {
+          if (!SHOP_ID || !SECRET_KEY) return
           
-          // Если платеж успешен - активируем подписку
-          if (latestPayment.status === 'succeeded') {
-            const now = new Date()
-            const expiresAt = new Date(now)
-            expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
-            
-            await prisma.user.update({
-              where: { id: user.id },
-              data: {
-                subscriptionType: 'premium',
-                subscriptionStatus: 'active',
-                subscriptionStartedAt: user.subscriptionStartedAt || now,
-                subscriptionExpiresAt: expiresAt
-              }
+          const latestPayment = await getPayment(SHOP_ID, SECRET_KEY, payment.id)
+          if (latestPayment.status !== dbPayment.status) {
+            await prisma.payment.update({
+              where: { id: dbPayment.id },
+              data: { status: latestPayment.status }
             })
+            
+            // Если платеж успешен - активируем подписку
+            if (latestPayment.status === 'succeeded') {
+              const now = new Date()
+              const expiresAt = new Date(now)
+              expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
+              
+              await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                  subscriptionType: 'premium',
+                  subscriptionStatus: 'active',
+                  subscriptionStartedAt: user.subscriptionStartedAt || now,
+                  subscriptionExpiresAt: expiresAt
+                }
+              })
+            }
           }
+        } catch (error) {
+          console.error('Error checking payment status after creation:', error)
         }
-      } catch (error) {
-        console.error('Error checking payment status after creation:', error)
-      }
-    }, 5000) // Проверяем через 5 секунд
+      }, 5000) // Проверяем через 5 секунд
+    }
 
     res.json({
       paymentId: dbPayment.id,
@@ -250,7 +271,12 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
  */
 export async function checkPaymentStatus(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { paymentId } = req.params
 
     const dbPayment = await prisma.payment.findFirst({

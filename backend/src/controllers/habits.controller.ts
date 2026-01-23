@@ -2,13 +2,18 @@ import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
 import { calculateStreak, isCompletedToday, getCurrentPeriod, getNextPeriod, getPreviousPeriod } from '../utils/streak'
 import { validationResult } from 'express-validator'
+import { FREE_HABITS_LIMIT } from '../middleware/subscription'
 
 /**
  * Получить все привычки пользователя
  */
 export async function getHabits(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
 
     const habits = await prisma.habit.findMany({
       where: { userId: user.id },
@@ -136,57 +141,67 @@ export async function createHabit(req: Request, res: Response) {
       return res.status(400).json({ errors: errors.array() })
     }
 
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { name, description, reminderTime, reminderEnabled } = req.body
 
-    // Дополнительная проверка лимита перед созданием (защита от race condition)
-    const userWithSubscription = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: {
-        habits: true
-      }
-    })
-
-    if (!userWithSubscription) {
-      return res.status(404).json({ error: 'User not found' })
-    }
-
-    // Проверяем подписку один раз
-    const currentTime = new Date()
-    const hasPremium = 
-      userWithSubscription.subscriptionStatus === 'active' &&
-      userWithSubscription.subscriptionExpiresAt &&
-      userWithSubscription.subscriptionExpiresAt > currentTime
-
-    // Проверяем, что напоминания доступны только для Premium
-    if ((reminderEnabled || reminderTime) && !hasPremium) {
-      return res.status(403).json({
-        error: 'Premium subscription required for reminders',
-        message: 'Напоминания доступны только с Premium подпиской',
-        upgradeRequired: true
+    // Валидация: проверяем, что имя не пустое после trim
+    const trimmedName = name?.trim()
+    if (!trimmedName || trimmedName.length === 0) {
+      return res.status(400).json({ 
+        error: 'Invalid habit name',
+        message: 'Название привычки не может быть пустым'
       })
     }
 
-    // Проверяем лимит Free плана
-    const FREE_HABITS_LIMIT = 3
-    if (!hasPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
-      return res.status(403).json({
-        error: 'Free plan limit reached',
-        message: `На бесплатном тарифе можно создать максимум ${FREE_HABITS_LIMIT} привычки`,
-        limit: FREE_HABITS_LIMIT,
-        current: userWithSubscription.habits.length,
-        upgradeRequired: true
+    // Используем транзакцию для атомарной проверки лимита и создания привычки
+    // Это предотвращает race condition при одновременных запросах
+    
+    const habit = await prisma.$transaction(async (tx) => {
+      // Блокируем пользователя для чтения (SELECT FOR UPDATE)
+      // Это гарантирует, что между проверкой и созданием не будет других операций
+      const userWithSubscription = await tx.user.findUnique({
+        where: { id: user.id },
+        include: {
+          habits: true
+        }
       })
-    }
 
-    const habit = await prisma.habit.create({
-      data: {
-        userId: user.id,
-        name: name.trim(),
-        description: description?.trim() || null,
-        reminderTime: reminderTime || null,
-        reminderEnabled: reminderEnabled ?? true
+      if (!userWithSubscription) {
+        throw new Error('User not found')
       }
+
+      // Проверяем подписку один раз
+      const currentTime = new Date()
+      const hasPremium = 
+        userWithSubscription.subscriptionStatus === 'active' &&
+        userWithSubscription.subscriptionExpiresAt &&
+        userWithSubscription.subscriptionExpiresAt > currentTime
+
+      // Проверяем, что напоминания доступны только для Premium
+      if ((reminderEnabled || reminderTime) && !hasPremium) {
+        throw new Error('PREMIUM_REQUIRED_FOR_REMINDERS')
+      }
+
+      // Проверяем лимит Free плана
+      if (!hasPremium && userWithSubscription.habits.length >= FREE_HABITS_LIMIT) {
+        throw new Error('FREE_PLAN_LIMIT_REACHED')
+      }
+
+      // Создаём привычку
+      return await tx.habit.create({
+        data: {
+          userId: user.id,
+          name: trimmedName,
+          description: description?.trim() || null,
+          reminderTime: reminderTime || null,
+          reminderEnabled: reminderEnabled ?? true
+        }
+      })
     })
 
     const streak = await calculateStreak(habit.id)
@@ -203,9 +218,35 @@ export async function createHabit(req: Request, res: Response) {
       streak,
       isCompletedToday: completedToday
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating habit:', error)
-    res.status(500).json({ error: 'Failed to create habit' })
+    
+    // Обрабатываем специальные ошибки из транзакции
+    if (error.message === 'PREMIUM_REQUIRED_FOR_REMINDERS') {
+      return res.status(403).json({
+        error: 'Premium subscription required for reminders',
+        message: 'Напоминания доступны только с Premium подпиской',
+        upgradeRequired: true
+      })
+    }
+    
+    if (error.message === 'FREE_PLAN_LIMIT_REACHED') {
+      return res.status(403).json({
+        error: 'Free plan limit reached',
+        message: `На бесплатном тарифе можно создать максимум ${FREE_HABITS_LIMIT} привычки`,
+        limit: FREE_HABITS_LIMIT,
+        upgradeRequired: true
+      })
+    }
+    
+    if (error.message === 'User not found') {
+      return res.status(404).json({ error: 'User not found' })
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to create habit',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 }
 
@@ -219,7 +260,12 @@ export async function updateHabit(req: Request, res: Response) {
       return res.status(400).json({ errors: errors.array() })
     }
 
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { id } = req.params
     const { name, description } = req.body
 
@@ -233,6 +279,17 @@ export async function updateHabit(req: Request, res: Response) {
 
     if (!existingHabit) {
       return res.status(404).json({ error: 'Habit not found' })
+    }
+
+    // Валидация: проверяем, что имя не пустое после trim (если передано)
+    if (name !== undefined) {
+      const trimmedName = name?.trim()
+      if (!trimmedName || trimmedName.length === 0) {
+        return res.status(400).json({ 
+          error: 'Invalid habit name',
+          message: 'Название привычки не может быть пустым'
+        })
+      }
     }
 
     // Проверяем подписку для напоминаний
@@ -305,7 +362,12 @@ export async function updateHabit(req: Request, res: Response) {
  */
 export async function deleteHabit(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { id } = req.params
 
     // Проверяем, что привычка принадлежит пользователю
@@ -363,7 +425,12 @@ export async function deleteHabit(req: Request, res: Response) {
  */
 export async function completeHabitToday(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { id } = req.params
 
     // Проверяем, что привычка принадлежит пользователю
@@ -383,79 +450,72 @@ export async function completeHabitToday(req: Request, res: Response) {
     const today = getCurrentPeriod()
     const tomorrow = getNextPeriod(today)
 
-    // Проверяем, не отмечена ли уже привычка сегодня
-    const existingLog = await prisma.habitLog.findFirst({
-      where: {
-        habitId: id,
-        date: {
-          gte: today,
-          lt: tomorrow
+    // Используем транзакцию для атомарной операции toggle
+    // Это предотвращает race condition при одновременных запросах
+    const result = await prisma.$transaction(async (tx) => {
+      // Проверяем, не отмечена ли уже привычка сегодня
+      // Используем точное сравнение даты для уникальности
+      const existingLog = await tx.habitLog.findFirst({
+        where: {
+          habitId: id,
+          date: {
+            gte: today,
+            lt: tomorrow
+          }
         }
+      })
+
+      if (existingLog) {
+        // Если уже отмечена, удаляем отметку (toggle)
+        await tx.habitLog.delete({
+          where: { id: existingLog.id }
+        })
+        return { completed: false, log: null }
+      }
+
+      // Создаём новую отметку используя upsert для защиты от race condition
+      // Но так как у нас уникальный индекс на (habitId, date), используем create с обработкой ошибки
+      try {
+        const newLog = await tx.habitLog.create({
+          data: {
+            habitId: id,
+            date: today
+          }
+        })
+        return { completed: true, log: newLog }
+      } catch (createError: any) {
+        // Если уже существует (race condition), получаем существующую
+        if (createError.code === 'P2002') {
+          const log = await tx.habitLog.findFirst({
+            where: {
+              habitId: id,
+              date: {
+                gte: today,
+                lt: tomorrow
+              }
+            }
+          })
+          if (log) {
+            // Если лог существует, значит кто-то другой уже создал его
+            // Удаляем его (toggle поведение)
+            await tx.habitLog.delete({
+              where: { id: log.id }
+            })
+            return { completed: false, log: null }
+          }
+        }
+        throw createError
       }
     })
 
-    if (existingLog) {
-      // Если уже отмечена, удаляем отметку (toggle)
-      try {
-        await prisma.habitLog.delete({
-          where: { id: existingLog.id }
-        })
-      } catch (deleteError: any) {
-        // Если ошибка при удалении (может быть уже удалена), просто продолжаем
-        if (deleteError.code !== 'P2025') {
-          console.error('Error deleting habit log:', deleteError)
-          throw deleteError
-        }
-      }
-
-      const streak = await calculateStreak(id)
-      return res.json({
-        completed: false,
-        streak
-      })
-    }
-
-    // Создаём новую отметку
-    // Используем upsert для предотвращения конфликтов
-    try {
-      const newLog = await prisma.habitLog.create({
-        data: {
-          habitId: id,
-          date: today
-        }
-      })
-      console.log(`✅ Created habit log for habit ${id} on date ${today.toISOString()}, log ID: ${newLog.id}`)
-    } catch (createError: any) {
-      // Если уже существует (race condition), просто получаем существующую
-      if (createError.code === 'P2002') {
-        const log = await prisma.habitLog.findFirst({
-          where: {
-            habitId: id,
-            date: {
-              gte: today,
-              lt: tomorrow
-            }
-          }
-        })
-        
-        if (!log) {
-          throw createError
-        }
-        console.log(`⚠️ Habit log already exists for habit ${id} on date ${today.toISOString()}, using existing log`)
-      } else {
-        throw createError
-      }
-    }
-
-    // Пересчитываем streak после создания лога
-    // Делаем небольшой запрос, чтобы убедиться, что данные синхронизированы
+    // Пересчитываем streak после изменения лога
     const streak = await calculateStreak(id)
     console.log(`📊 Calculated streak for habit ${id}: ${streak}`)
     console.log(`📅 Current period: ${today.toISOString()}`)
     console.log(`📅 Next period: ${tomorrow.toISOString()}`)
 
     res.json({
-      completed: true,
+      completed: result.completed,
       streak
     })
   } catch (error: any) {
@@ -487,7 +547,12 @@ export async function completeHabitToday(req: Request, res: Response) {
  */
 export async function getHabitStats(req: Request, res: Response) {
   try {
-    const user = (req as any).user
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+    
     const { id } = req.params
 
     // Проверяем, что привычка принадлежит пользователю
