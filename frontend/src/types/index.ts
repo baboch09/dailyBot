@@ -50,6 +50,7 @@ export interface SubscriptionStatus {
     amount: number
     status: string
     createdAt: string
+    isActive?: boolean // true если это текущая активная подписка
   }>
 }
 

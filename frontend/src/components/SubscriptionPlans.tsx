@@ -69,11 +69,12 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
   const currentPlan = activeTab === 'month' ? monthPlan : yearPlan
 
   // Вычисляем выгоду от годовой подписки
-  const monthlyPrice = monthPlan?.price || 99
-  const yearlyPrice = yearPlan?.price || 990
+  const monthlyPrice = monthPlan?.price || 79
+  const yearlyPrice = yearPlan?.price || 799
   const yearlyMonthlyEquivalent = yearlyPrice / 12
   const savings = (monthlyPrice * 12) - yearlyPrice
   const savingsPercent = Math.round((savings / (monthlyPrice * 12)) * 100)
+  const fullYearPrice = monthlyPrice * 12 // Полная стоимость без выгоды
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -127,10 +128,24 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
             {/* Цена */}
             <div className="text-center">
               <div className="flex items-baseline justify-center gap-2 mb-2">
-                <span className="text-5xl font-bold text-gray-900 dark:text-gray-100">
-                  {currentPlan.price}
-                </span>
-                <span className="text-xl text-gray-600 dark:text-gray-400">₽</span>
+                {activeTab === 'year' ? (
+                  <>
+                    <span className="text-2xl font-normal text-gray-400 dark:text-gray-500 line-through">
+                      {fullYearPrice} ₽
+                    </span>
+                    <span className="text-5xl font-bold text-gray-900 dark:text-gray-100">
+                      {currentPlan.price}
+                    </span>
+                    <span className="text-xl text-gray-600 dark:text-gray-400">₽</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-5xl font-bold text-gray-900 dark:text-gray-100">
+                      {currentPlan.price}
+                    </span>
+                    <span className="text-xl text-gray-600 dark:text-gray-400">₽</span>
+                  </>
+                )}
               </div>
               
               {activeTab === 'year' && (

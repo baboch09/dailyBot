@@ -10,12 +10,12 @@ const SECRET_KEY = process.env.YUKASSA_SECRET_KEY
 const SUBSCRIPTION_PLANS = {
   month: {
     name: 'Месяц',
-    price: 99, // рублей
+    price: 79, // рублей
     durationDays: 30
   },
   year: {
     name: 'Год',
-    price: 990, // рублей (экономия)
+    price: 799, // рублей (экономия)
     durationDays: 365
   }
 }
@@ -83,6 +83,17 @@ export async function getSubscriptionStatus(req: Request, res: Response) {
       ? Math.ceil((userWithSubscription.subscriptionExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
       : 0
 
+    // Определяем, какой платеж является текущим активным
+    // Если подписка активна, то последний успешный платеж считается текущим активным
+    // Платежи уже отсортированы по createdAt desc, поэтому первый успешный и есть последний
+    let activePaymentId: string | null = null
+    if (isActive) {
+      const activePayment = userWithSubscription.payments.find(p => p.status === 'succeeded')
+      if (activePayment) {
+        activePaymentId = activePayment.id
+      }
+    }
+
     res.json({
       subscriptionType: userWithSubscription.subscriptionType || 'free',
       subscriptionStatus: isActive ? 'active' : finalSubscriptionStatus,
@@ -93,7 +104,8 @@ export async function getSubscriptionStatus(req: Request, res: Response) {
         id: p.id,
         amount: p.amount,
         status: p.status,
-        createdAt: p.createdAt.toISOString()
+        createdAt: p.createdAt.toISOString(),
+        isActive: p.id === activePaymentId // Помечаем текущий активный платеж
       }))
     })
   } catch (error) {

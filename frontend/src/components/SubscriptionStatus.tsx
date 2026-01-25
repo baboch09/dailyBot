@@ -75,26 +75,47 @@ export default function SubscriptionStatus({}: SubscriptionStatusProps) {
             {status.recentPayments.map((payment) => (
               <div
                 key={payment.id}
-                className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-[16px]"
+                className={`flex items-center justify-between p-3 rounded-[16px] transition-all ${
+                  payment.isActive
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
+                    : 'bg-gray-50 dark:bg-gray-700/50'
+                }`}
               >
-                <div>
-                  <p className="font-medium text-gray-800 dark:text-gray-200 text-sm">
-                    {payment.amount} ₽
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(payment.createdAt).toLocaleDateString('ru-RU')}
-                  </p>
+                <div className="flex items-center gap-2">
+                  {payment.isActive && (
+                    <span className="text-blue-600 dark:text-blue-400 text-sm">●</span>
+                  )}
+                  <div>
+                    <p className={`font-medium text-sm ${
+                      payment.isActive
+                        ? 'text-blue-800 dark:text-blue-200'
+                        : 'text-gray-800 dark:text-gray-200'
+                    }`}>
+                      {payment.amount} ₽
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(payment.createdAt).toLocaleDateString('ru-RU')}
+                    </p>
+                  </div>
                 </div>
                 <span
                   className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    payment.status === 'succeeded'
+                    payment.isActive
+                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      : payment.status === 'succeeded'
                       ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                       : payment.status === 'pending'
                       ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                       : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                   }`}
                 >
-                  {payment.status === 'succeeded' ? 'Оплачено' : payment.status === 'pending' ? 'Ожидание' : 'Ошибка'}
+                  {payment.isActive 
+                    ? 'Активна' 
+                    : payment.status === 'succeeded' 
+                    ? 'Оплачено' 
+                    : payment.status === 'pending' 
+                    ? 'Ожидание' 
+                    : 'Ошибка'}
                 </span>
               </div>
             ))}
