@@ -81,3 +81,11 @@ export interface PaymentStatusResponse {
   status: string
   subscriptionActive: boolean
 }
+
+export interface LatestPaymentStatusResponse {
+  hasPayment: boolean
+  paymentId?: string
+  status?: string
+  subscriptionActive?: boolean
+  message?: string
+}

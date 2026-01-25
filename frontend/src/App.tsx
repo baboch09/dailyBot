@@ -74,24 +74,54 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search)
     const paymentStatus = urlParams.get('payment')
     if (paymentStatus === 'success') {
-      // Показываем уведомление об успешной оплате
-      setTimeout(() => {
-        alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
-        // Убираем параметр из URL
-        window.history.replaceState({}, '', window.location.pathname)
-        // Обновляем статус подписки с небольшой задержкой для обработки вебхука
-        setTimeout(() => {
-          loadSubscriptionStatus()
-        }, 1000)
-        // Также перезагружаем страницу для полного обновления состояния
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
-      }, 500)
+      // Убираем параметр из URL сразу
+      window.history.replaceState({}, '', window.location.pathname)
+      
+      // Проверяем статус последнего платежа и активируем подписку если нужно
+      const checkAndActivateSubscription = async () => {
+        try {
+          // Проверяем статус последнего платежа
+          const paymentStatus = await subscriptionApi.checkLatestPaymentStatus()
+          
+          if (paymentStatus.hasPayment && paymentStatus.status === 'succeeded') {
+            // Платеж успешен - обновляем статус подписки
+            await loadSubscriptionStatus()
+            alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
+            // Перезагружаем страницу для полного обновления состояния
+            window.location.reload()
+          } else if (paymentStatus.hasPayment && paymentStatus.status === 'pending') {
+            // Платеж еще обрабатывается - ждем и проверяем снова
+            setTimeout(async () => {
+              const retryStatus = await subscriptionApi.checkLatestPaymentStatus()
+              if (retryStatus.status === 'succeeded') {
+                await loadSubscriptionStatus()
+                alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
+                window.location.reload()
+              } else {
+                // Если все еще pending, обновляем статус и показываем сообщение
+                await loadSubscriptionStatus()
+                alert('⏳ Платеж обрабатывается. Подписка будет активирована автоматически после подтверждения.')
+              }
+            }, 2000)
+          } else {
+            // Платеж не найден или отменен
+            await loadSubscriptionStatus()
+            alert('⚠️ Не удалось найти информацию о платеже. Пожалуйста, проверьте статус подписки.')
+          }
+        } catch (error) {
+          console.error('Error checking payment status:', error)
+          // В случае ошибки просто обновляем статус подписки
+          await loadSubscriptionStatus()
+          alert('⏳ Проверяем статус платежа. Если оплата прошла успешно, подписка будет активирована автоматически.')
+        }
+      }
+      
+      // Запускаем проверку с небольшой задержкой для обработки webhook
+      setTimeout(checkAndActivateSubscription, 1000)
     } else if (paymentStatus === 'fail') {
+      window.history.replaceState({}, '', window.location.pathname)
       setTimeout(() => {
         alert('❌ Ошибка при обработке платежа. Попробуйте еще раз.')
-        window.history.replaceState({}, '', window.location.pathname)
       }, 500)
     }
   }, [])

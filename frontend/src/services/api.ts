@@ -9,7 +9,8 @@ import type {
   SubscriptionPlansResponse,
   CreatePaymentRequest,
   CreatePaymentResponse,
-  PaymentStatusResponse
+  PaymentStatusResponse,
+  LatestPaymentStatusResponse
 } from '../types'
 
 // URL backend API
@@ -132,6 +133,12 @@ export const subscriptionApi = {
   // Проверить статус платежа
   checkPaymentStatus: async (paymentId: string): Promise<PaymentStatusResponse> => {
     const response = await api.get<PaymentStatusResponse>(`/subscription/payment/${paymentId}/status`)
+    return response.data
+  },
+
+  // Проверить статус последнего платежа (для обработки возврата после оплаты)
+  checkLatestPaymentStatus: async (): Promise<LatestPaymentStatusResponse> => {
+    const response = await api.get<LatestPaymentStatusResponse>('/subscription/check-latest-payment')
     return response.data
   }
 }

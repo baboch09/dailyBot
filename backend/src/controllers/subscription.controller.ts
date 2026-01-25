@@ -51,12 +51,32 @@ export async function getSubscriptionStatus(req: Request, res: Response) {
       userWithSubscription.subscriptionExpiresAt &&
       userWithSubscription.subscriptionExpiresAt > now
 
+    // Проверяем, есть ли pending платеж - если есть, не устанавливаем expired
+    const hasPendingPayment = userWithSubscription.payments.some(
+      p => p.status === 'pending' && 
+      new Date(p.createdAt) > new Date(now.getTime() - 24 * 60 * 60 * 1000) // Платеж создан не более 24 часов назад
+    )
+
     // Автоматически обновляем статус если подписка истекла
-    if (!isActive && userWithSubscription.subscriptionStatus === 'active') {
+    // НО только если нет pending платежа (чтобы не сбрасывать статус во время обработки оплаты)
+    let finalSubscriptionStatus = userWithSubscription.subscriptionStatus || 'free'
+    
+    if (!isActive && userWithSubscription.subscriptionStatus === 'active' && !hasPendingPayment) {
       await prisma.user.update({
         where: { id: user.id },
         data: { subscriptionStatus: 'expired' }
       })
+      finalSubscriptionStatus = 'expired'
+    } else if (!isActive && hasPendingPayment) {
+      // Если есть pending платеж, не возвращаем expired, даже если подписка не активна
+      // Это позволяет пользователю видеть, что платеж обрабатывается
+      finalSubscriptionStatus = userWithSubscription.subscriptionStatus || 'free'
+    } else if (!isActive) {
+      // Если подписка не активна и нет pending платежа, возвращаем текущий статус или free
+      finalSubscriptionStatus = userWithSubscription.subscriptionStatus || 'free'
+    } else {
+      // Подписка активна
+      finalSubscriptionStatus = 'active'
     }
 
     const daysRemaining = userWithSubscription.subscriptionExpiresAt && userWithSubscription.subscriptionExpiresAt > now
@@ -65,7 +85,7 @@ export async function getSubscriptionStatus(req: Request, res: Response) {
 
     res.json({
       subscriptionType: userWithSubscription.subscriptionType || 'free',
-      subscriptionStatus: isActive ? 'active' : (userWithSubscription.subscriptionStatus || 'free'),
+      subscriptionStatus: isActive ? 'active' : finalSubscriptionStatus,
       subscriptionExpiresAt: userWithSubscription.subscriptionExpiresAt?.toISOString() || null,
       subscriptionStartedAt: userWithSubscription.subscriptionStartedAt?.toISOString() || null,
       daysRemaining: isActive ? daysRemaining : 0,
@@ -265,6 +285,124 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
     console.error('Error creating subscription payment:', error)
     res.status(500).json({ 
       error: 'Failed to create payment',
+      message: error.message 
+    })
+  }
+}
+
+/**
+ * Проверить статус последнего платежа пользователя и обновить подписку
+ * Используется после возврата с Юмани для проверки статуса оплаты
+ */
+export async function checkLatestPaymentStatus(req: Request, res: Response) {
+  try {
+    const user = req.user
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
+    }
+
+    // Находим последний платеж пользователя
+    const latestPayment = await prisma.payment.findFirst({
+      where: {
+        userId: user.id
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (!latestPayment) {
+      return res.json({
+        hasPayment: false,
+        message: 'No payments found'
+      })
+    }
+
+    // Если платеж уже успешен, возвращаем статус
+    if (latestPayment.status === 'succeeded') {
+      // Проверяем, активна ли подписка
+      const userWithSubscription = await prisma.user.findUnique({
+        where: { id: user.id }
+      })
+
+      const isActive = 
+        userWithSubscription?.subscriptionStatus === 'active' &&
+        userWithSubscription?.subscriptionExpiresAt &&
+        userWithSubscription.subscriptionExpiresAt > new Date()
+
+      return res.json({
+        hasPayment: true,
+        paymentId: latestPayment.id,
+        status: latestPayment.status,
+        subscriptionActive: isActive
+      })
+    }
+
+    // Если платеж pending или canceled, проверяем его статус в ЮКассе
+    if (!latestPayment.yookassaId) {
+      return res.status(400).json({ error: 'Payment has no YooKassa ID' })
+    }
+
+    if (!SHOP_ID || !SECRET_KEY) {
+      return res.status(500).json({ error: 'YooKassa credentials not configured' })
+    }
+
+    const shopId = SHOP_ID
+    const secretKey = SECRET_KEY
+
+    // Получаем актуальный статус из ЮКассы
+    const payment = await getPayment(shopId, secretKey, latestPayment.yookassaId)
+
+    // Обновляем статус в БД
+    await prisma.payment.update({
+      where: { id: latestPayment.id },
+      data: { 
+        status: payment.status,
+        paymentMethod: payment.metadata?.payment_method || null
+      }
+    })
+
+    // Если платеж успешен - активируем подписку
+    if (payment.status === 'succeeded' && latestPayment.status !== 'succeeded') {
+      const metadata = latestPayment.metadata ? JSON.parse(latestPayment.metadata) : {}
+      const plan = SUBSCRIPTION_PLANS[metadata.planId as keyof typeof SUBSCRIPTION_PLANS]
+
+      if (plan) {
+        const now = new Date()
+        const expiresAt = new Date(now)
+        expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            subscriptionType: 'premium',
+            subscriptionStatus: 'active',
+            subscriptionStartedAt: user.subscriptionStartedAt || now,
+            subscriptionExpiresAt: expiresAt
+          }
+        })
+      }
+    }
+
+    // Проверяем финальный статус подписки
+    const userWithSubscription = await prisma.user.findUnique({
+      where: { id: user.id }
+    })
+
+    const isActive = 
+      userWithSubscription?.subscriptionStatus === 'active' &&
+      userWithSubscription?.subscriptionExpiresAt &&
+      userWithSubscription.subscriptionExpiresAt > new Date()
+
+    res.json({
+      hasPayment: true,
+      paymentId: latestPayment.id,
+      status: payment.status,
+      subscriptionActive: isActive
+    })
+  } catch (error: any) {
+    console.error('Error checking latest payment status:', error)
+    res.status(500).json({ 
+      error: 'Failed to check payment status',
       message: error.message 
     })
   }

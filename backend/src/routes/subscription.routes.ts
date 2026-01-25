@@ -3,7 +3,8 @@ import {
   getSubscriptionStatus,
   getSubscriptionPlans,
   createSubscriptionPayment,
-  checkPaymentStatus
+  checkPaymentStatus,
+  checkLatestPaymentStatus
 } from '../controllers/subscription.controller'
 import { authenticateUser } from '../middleware/auth'
 
@@ -23,5 +24,8 @@ router.post('/create-payment', createSubscriptionPayment)
 
 // Проверить статус платежа
 router.get('/payment/:paymentId/status', checkPaymentStatus)
+
+// Проверить статус последнего платежа пользователя (для обработки возврата после оплаты)
+router.get('/check-latest-payment', checkLatestPaymentStatus)
 
 export default router
