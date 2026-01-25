@@ -108,20 +108,29 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
   let streak = todayLog ? 1 : 0
 
   // Идём по логам и считаем последовательные периоды
+  // Важно: normalizedLogs уже отсортированы по дате (от новых к старым)
+  // Если есть лог для текущего периода, начинаем со следующего лога (предыдущий период)
   for (let i = todayLog ? 1 : 0; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
+    
+    // Нормализуем checkDate перед сравнением
+    // checkDate уже должен быть нормализован, но на всякий случай нормализуем снова
+    const normalizedCheckDate = new Date(checkDate)
     if (TEST_MODE) {
-      const minutes = checkDate.getUTCMinutes()
+      const minutes = normalizedCheckDate.getUTCMinutes()
       const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      checkDate.setUTCMinutes(roundedMinutes, 0, 0)
-      checkDate.setUTCMilliseconds(0)
+      normalizedCheckDate.setUTCMinutes(roundedMinutes, 0, 0)
+      normalizedCheckDate.setUTCMilliseconds(0)
+      // Также нормализуем секунды
+      normalizedCheckDate.setUTCSeconds(0, 0)
     } else {
-      checkDate.setUTCHours(0, 0, 0, 0)
+      normalizedCheckDate.setUTCHours(0, 0, 0, 0)
     }
 
-    if (logDate.getTime() === checkDate.getTime()) {
+    // Сравниваем нормализованные даты
+    if (logDate.getTime() === normalizedCheckDate.getTime()) {
       streak++
-      checkDate = getPreviousPeriod(checkDate)
+      checkDate = getPreviousPeriod(normalizedCheckDate)
     } else {
       // Если есть пропуск, прекращаем подсчёт
       break
@@ -484,11 +493,12 @@ export async function completeHabitToday(req: Request, res: Response) {
 
       // Создаём новую отметку используя upsert для защиты от race condition
       // Но так как у нас уникальный индекс на (habitId, date), используем create с обработкой ошибки
+      // Важно: используем нормализованную дату (today), которая уже округлена до периода
       try {
         const newLog = await tx.habitLog.create({
           data: {
             habitId: id,
-            date: today
+            date: today // today уже нормализован через getCurrentPeriod()
           }
         })
         return { completed: true, log: newLog }
@@ -518,10 +528,13 @@ export async function completeHabitToday(req: Request, res: Response) {
     })
 
     // Пересчитываем streak после изменения лога
-    const streak = await calculateStreak(id)
-    console.log(`📊 Calculated streak for habit ${id}: ${streak}`)
+    // Транзакция уже завершена, новый лог должен быть виден
+    console.log(`🔄 Recalculating streak after ${result.completed ? 'creating' : 'deleting'} log for habit ${id}`)
     console.log(`📅 Current period: ${today.toISOString()}`)
     console.log(`📅 Next period: ${tomorrow.toISOString()}`)
+    const streak = await calculateStreak(id)
+    console.log(`📊 Calculated streak for habit ${id}: ${streak}`)
+    console.log(`✅ Habit ${id} completion result:`, { completed: result.completed, streak })
 
     res.json({
       completed: result.completed,

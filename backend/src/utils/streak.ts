@@ -109,42 +109,54 @@ export async function calculateStreak(habitId: string): Promise<number> {
     normalizedLogsCount: normalizedLogs.length,
     todayPeriod: today.toISOString(),
     hasTodayLog: !!todayLog,
-    firstLogDate: normalizedLogs[0]?.toISOString()
+    firstLogDate: normalizedLogs[0]?.toISOString(),
+    allNormalizedLogs: normalizedLogs.map(l => l.toISOString())
   })
 
   // Если в текущем периоде не выполнена, начинаем считать с предыдущего периода
+  // Важно: today уже нормализован через getCurrentPeriod()
   let checkDate = todayLog ? new Date(today) : getPreviousPeriod(today)
   let streak = todayLog ? 1 : 0
   console.log(`📊 Starting streak calculation:`, { 
     checkDate: checkDate.toISOString(), 
-    initialStreak: streak 
+    initialStreak: streak,
+    todayLogIndex: todayLog ? normalizedLogs.indexOf(todayLog) : -1
   })
 
   // Идём по логам и считаем последовательные периоды
+  // Важно: normalizedLogs уже отсортированы по дате (от новых к старым)
+  // Если есть лог для текущего периода, начинаем со следующего лога (предыдущий период)
   for (let i = todayLog ? 1 : 0; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
+    
+    // Нормализуем checkDate перед сравнением
+    // checkDate уже должен быть нормализован, но на всякий случай нормализуем снова
+    const normalizedCheckDate = new Date(checkDate)
     if (TEST_MODE) {
-      const minutes = checkDate.getUTCMinutes()
+      const minutes = normalizedCheckDate.getUTCMinutes()
       const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      checkDate.setUTCMinutes(roundedMinutes, 0, 0)
-      checkDate.setUTCMilliseconds(0)
+      normalizedCheckDate.setUTCMinutes(roundedMinutes, 0, 0)
+      normalizedCheckDate.setUTCMilliseconds(0)
+      // Также нормализуем секунды
+      normalizedCheckDate.setUTCSeconds(0, 0)
     } else {
-      checkDate.setUTCHours(0, 0, 0, 0)
+      normalizedCheckDate.setUTCHours(0, 0, 0, 0)
     }
 
-    if (logDate.getTime() === checkDate.getTime()) {
+    // Сравниваем нормализованные даты
+    if (logDate.getTime() === normalizedCheckDate.getTime()) {
       streak++
       console.log(`✅ Found consecutive period:`, { 
         logDate: logDate.toISOString(), 
-        checkDate: checkDate.toISOString(), 
+        checkDate: normalizedCheckDate.toISOString(), 
         currentStreak: streak 
       })
-      checkDate = getPreviousPeriod(checkDate)
+      checkDate = getPreviousPeriod(normalizedCheckDate)
     } else {
       // Если есть пропуск, прекращаем подсчёт
       console.log(`❌ Streak broken:`, { 
         logDate: logDate.toISOString(), 
-        expectedDate: checkDate.toISOString(),
+        expectedDate: normalizedCheckDate.toISOString(),
         finalStreak: streak 
       })
       break
