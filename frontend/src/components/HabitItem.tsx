@@ -258,7 +258,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
         ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' 
         : 'border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700'
     }`}>
-      <div className="p-6">
+      <div className="p-4">
         <div className="flex items-start gap-4">
           <button
             onClick={handleComplete}
@@ -344,7 +344,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
               </div>
             ) : (
               <>
-                <div className="flex items-start justify-between gap-2 mb-1">
+                <div className="flex items-center justify-between gap-2 mb-1">
                   <h3 className={`font-bold text-lg transition-all flex-1 ${
                     habit.isCompletedToday 
                       ? 'line-through text-gray-400 dark:text-gray-500' 
@@ -357,7 +357,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   <div className="relative habit-menu">
                     <button
                       onClick={() => setShowMenu(!showMenu)}
-                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />

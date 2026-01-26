@@ -26,8 +26,6 @@ export async function getHabits(req: Request, res: Response) {
       }
     })
 
-    // ТЕСТОВЫЙ РЕЖИМ: используем текущий период (5 минут) вместо дня
-    // TODO: УДАЛИТЬ ПОСЛЕ ТЕСТИРОВАНИЯ - вернуть к реальным дням
     const today = getCurrentPeriod()
     const tomorrow = getNextPeriod(today)
 
@@ -38,17 +36,10 @@ export async function getHabits(req: Request, res: Response) {
       const streak = calculateStreakFromLogs(habit.logs, today)
       const isCompletedToday = habit.logs.some(log => {
         const logDate = new Date(log.date)
-        // ТЕСТОВЫЙ РЕЖИМ: нормализуем к текущему периоду (5 минут)
-        const TEST_MODE = true // TODO: Установить в false после тестирования
-        const PERIOD_MINUTES = 5
-        if (TEST_MODE) {
-          const minutes = logDate.getUTCMinutes()
-          const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-          logDate.setUTCMinutes(roundedMinutes, 0, 0)
-          logDate.setUTCMilliseconds(0)
-        } else {
-          logDate.setUTCHours(0, 0, 0, 0)
-        }
+        logDate.setUTCHours(0, 0, 0, 0)
+        logDate.setUTCMinutes(0, 0, 0)
+        logDate.setUTCSeconds(0, 0)
+        logDate.setUTCMilliseconds(0)
         return logDate.getTime() === today.getTime()
       })
 
@@ -74,33 +65,19 @@ export async function getHabits(req: Request, res: Response) {
 
 /**
  * Вспомогательная функция для вычисления streak из логов (без запроса к БД)
- * ТЕСТОВЫЙ РЕЖИМ: использует 5-минутные интервалы вместо дней
  */
 function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): number {
   if (logs.length === 0) {
     return 0
   }
 
-  // ТЕСТОВЫЙ РЕЖИМ: нормализуем даты логов к текущему периоду (5 минут) вместо дня
-  // TODO: УДАЛИТЬ ПОСЛЕ ТЕСТИРОВАНИЯ - вернуть к нормализации по дням
-  const TEST_MODE = true // TODO: Установить в false после тестирования
-  const PERIOD_MINUTES = 5
-  
+  // Нормализуем даты логов к началу дня
   const normalizedLogs = logs.map(log => {
     const logDate = new Date(log.date)
-    if (TEST_MODE) {
-      // Округляем до ближайшего 5-минутного интервала
-      const minutes = logDate.getUTCMinutes()
-      const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      logDate.setUTCMinutes(roundedMinutes, 0, 0)
-      logDate.setUTCSeconds(0, 0)
-      logDate.setUTCMilliseconds(0)
-    } else {
-      logDate.setUTCHours(0, 0, 0, 0)
-      logDate.setUTCMinutes(0, 0, 0)
-      logDate.setUTCSeconds(0, 0)
-      logDate.setUTCMilliseconds(0)
-    }
+    logDate.setUTCHours(0, 0, 0, 0)
+    logDate.setUTCMinutes(0, 0, 0)
+    logDate.setUTCSeconds(0, 0)
+    logDate.setUTCMilliseconds(0)
     return logDate
   })
 
@@ -113,10 +90,10 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
   let checkDate = getPreviousPeriod(today)
   let streak = todayLog ? 1 : 0
 
-  // Идём по логам и считаем последовательные периоды
+  // Идём по логам и считаем последовательные дни
   // Важно: normalizedLogs уже отсортированы по дате (от новых к старым)
-  // Если есть лог для текущего периода, начинаем со следующего лога (предыдущий период)
-  // Если нет лога для текущего периода, начинаем с первого лога (предыдущий период)
+  // Если есть лог для текущего дня, начинаем со следующего лога (предыдущий день)
+  // Если нет лога для текущего дня, начинаем с первого лога (предыдущий день)
   const startIndex = todayLog ? 1 : 0
   for (let i = startIndex; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
@@ -124,18 +101,10 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
     // Нормализуем checkDate перед сравнением
     // checkDate уже должен быть нормализован через getPreviousPeriod, но нормализуем снова для уверенности
     const normalizedCheckDate = new Date(checkDate)
-    if (TEST_MODE) {
-      const minutes = normalizedCheckDate.getUTCMinutes()
-      const roundedMinutes = Math.floor(minutes / PERIOD_MINUTES) * PERIOD_MINUTES
-      normalizedCheckDate.setUTCMinutes(roundedMinutes, 0, 0)
-      normalizedCheckDate.setUTCMilliseconds(0)
-      normalizedCheckDate.setUTCSeconds(0, 0)
-    } else {
-      normalizedCheckDate.setUTCHours(0, 0, 0, 0)
-      normalizedCheckDate.setUTCMinutes(0, 0, 0)
-      normalizedCheckDate.setUTCSeconds(0, 0)
-      normalizedCheckDate.setUTCMilliseconds(0)
-    }
+    normalizedCheckDate.setUTCHours(0, 0, 0, 0)
+    normalizedCheckDate.setUTCMinutes(0, 0, 0)
+    normalizedCheckDate.setUTCSeconds(0, 0)
+    normalizedCheckDate.setUTCMilliseconds(0)
 
     // Сравниваем нормализованные даты
     if (logDate.getTime() === normalizedCheckDate.getTime()) {
@@ -473,8 +442,6 @@ export async function completeHabitToday(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
-    // ТЕСТОВЫЙ РЕЖИМ: используем текущий период (5 минут) вместо дня
-    // TODO: УДАЛИТЬ ПОСЛЕ ТЕСТИРОВАНИЯ - вернуть к реальным дням
     const today = getCurrentPeriod()
     const tomorrow = getNextPeriod(today)
 

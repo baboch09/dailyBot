@@ -71,7 +71,7 @@ export default function SubscriptionStatus({}: SubscriptionStatusProps) {
         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
           showPayments ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
         }`}>
-          <div className="px-4 pb-4 space-y-2">
+          <div className="px-4 pt-4 pb-4 space-y-2">
             {status.recentPayments.map((payment) => (
               <div
                 key={payment.id}

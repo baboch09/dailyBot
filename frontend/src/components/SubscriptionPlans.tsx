@@ -122,7 +122,7 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
       </div>
 
       {/* Контент тарифа */}
-      <div className="p-6">
+      <div className="p-6 rounded-b-[24px]">
         {currentPlan ? (
           <div className="space-y-6">
             {/* Цена */}
@@ -199,12 +199,6 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
               {processing ? 'Обработка...' : `Оформить подписку`}
             </button>
 
-            {/* Информация о тестовой карте */}
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                💳 Тестовая карта: 5555 5555 5555 4444
-              </p>
-            </div>
           </div>
         ) : (
           <div className="text-center py-8">
