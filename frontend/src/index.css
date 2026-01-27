@@ -33,6 +33,20 @@
   }
 }
 
+/* Убираем outline при клике мышью, но оставляем для навигации с клавиатуры */
+@layer base {
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  [role="button"]:focus:not(:focus-visible) {
+    outline: none;
+  }
+  
+  /* Убираем фокус сразу после клика на кнопки */
+  button:active {
+    outline: none;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

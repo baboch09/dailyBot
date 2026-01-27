@@ -39,27 +39,42 @@ function App() {
   }, [])
 
   // Глобальная обработка фокуса для не текстовых элементов
-  // Чтобы после нажатия фокус не "висел" на кнопках и других вью
+  // Убираем фокус сразу при mousedown, чтобы не было задержки
   useEffect(() => {
-    const handlePointerUp = () => {
-      const activeElement = document.activeElement as HTMLElement | null
-      if (!activeElement) return
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (!target) return
 
-      const tag = activeElement.tagName
+      const tag = target.tagName
       const isTextInput =
         tag === 'INPUT' ||
         tag === 'TEXTAREA' ||
-        activeElement.isContentEditable
+        target.isContentEditable
 
-      if (!isTextInput && activeElement !== document.body) {
-        activeElement.blur()
+      // Если кликнули по не-текстовому элементу, убираем фокус с текущего активного элемента
+      if (!isTextInput) {
+        const activeElement = document.activeElement as HTMLElement | null
+        if (activeElement && activeElement !== document.body) {
+          const activeTag = activeElement.tagName
+          const activeIsTextInput =
+            activeTag === 'INPUT' ||
+            activeTag === 'TEXTAREA' ||
+            activeElement.isContentEditable
+          
+          if (!activeIsTextInput) {
+            // Используем requestAnimationFrame чтобы не блокировать рендеринг
+            requestAnimationFrame(() => {
+              activeElement.blur()
+            })
+          }
+        }
       }
     }
 
-    document.addEventListener('pointerup', handlePointerUp)
+    document.addEventListener('mousedown', handleMouseDown, true) // true = capture phase, сработает раньше
 
     return () => {
-      document.removeEventListener('pointerup', handlePointerUp)
+      document.removeEventListener('mousedown', handleMouseDown, true)
     }
   }, [])
 

@@ -155,11 +155,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
 
   const formatTime = (time: string | null | undefined) => {
     if (!time) return null
-    const [hours, minutes] = time.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const displayHour = hour % 12 || 12
-    return `${displayHour}:${minutes} ${ampm}`
+    // Возвращаем время в 24-часовом формате (HH:MM)
+    return time
   }
 
   // Определение стадии streak с разными визуальными состояниями
@@ -458,8 +455,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
 
                 {/* Редактирование напоминания */}
                 {isEditingReminder && isPremium && (
-                  <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
-                    <div className="space-y-3">
+                  <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800 overflow-hidden">
+                    <div className="space-y-3 min-w-0">
                       <div className="flex items-center justify-between">
                         <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
                           <span>⏰</span>
@@ -476,7 +473,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                         </label>
                       </div>
                       {reminderEnabled && (
-                        <div>
+                        <div className="w-full min-w-0">
                           <label htmlFor={`reminder-${habit.id}`} className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
                             Время
                           </label>
@@ -485,7 +482,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                             type="time"
                             value={reminderTime}
                             onChange={(e) => setReminderTime(e.target.value)}
-                            className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm"
+                            className="w-full max-w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm box-border"
                           />
                         </div>
                       )}
