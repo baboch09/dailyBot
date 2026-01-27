@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { track } from '@vercel/analytics'
 import { Habit } from '../types'
 import { habitsApi } from '../services/api'
 
@@ -89,10 +90,29 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const handleUpdateReminder = async () => {
     setIsUpdatingReminder(true)
     try {
+      // Сохраняем предыдущее состояние для аналитики
+      const previousReminderEnabled = habit.reminderEnabled ?? false
+      
       await habitsApi.update(habit.id, {
         reminderTime: reminderEnabled ? reminderTime : null,
         reminderEnabled: reminderEnabled
       })
+      
+      // Аналитика: установка или удаление напоминания
+      if (reminderEnabled && !previousReminderEnabled) {
+        // Установка напоминания
+        if (isPremium) {
+          track('reminder_installed', {
+            isPremium: true
+          })
+        }
+      } else if (!reminderEnabled && previousReminderEnabled) {
+        // Удаление напоминания (для всех пользователей)
+        track('reminder_deleted', {
+          isPremium: isPremium
+        })
+      }
+      
       setIsEditingReminder(false)
       onUpdate()
     } catch (error: any) {

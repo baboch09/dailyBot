@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { track } from '@vercel/analytics'
 import { subscriptionApi } from '../services/api'
 import type { SubscriptionPlan } from '../types'
 
@@ -19,6 +20,15 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
     loadPlans()
   }, [])
 
+  // Аналитика: просмотр тарифов при переключении табов и при первой загрузке
+  useEffect(() => {
+    if (plans.length > 0) {
+      track('pricing_viewed', {
+        planType: activeTab
+      })
+    }
+  }, [activeTab, plans.length])
+
   const loadPlans = async () => {
     try {
       setLoading(true)
@@ -37,7 +47,16 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
     try {
       setProcessing(true)
       setError('')
+      
+      // Сохраняем тип плана для аналитики после успешной оплаты
+      sessionStorage.setItem('pending_payment_plan', activeTab)
+      
       const response = await subscriptionApi.createPayment({ planId: activeTab })
+      
+      // Аналитика: начало оплаты
+      track('payment_initiated', {
+        planType: activeTab
+      })
       
       if (response.confirmationUrl) {
         if (onPaymentCreated) {

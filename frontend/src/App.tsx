@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { track } from '@vercel/analytics'
 import { getWebApp } from './utils/telegram'
 import { Habit, SubscriptionStatus } from './types'
 import { habitsApi, subscriptionApi } from './services/api'
@@ -86,6 +87,14 @@ function App() {
           if (paymentStatus.hasPayment && paymentStatus.status === 'succeeded') {
             // Платеж успешен - обновляем статус подписки
             await loadSubscriptionStatus()
+            
+            // Аналитика: успешная оплата
+            const planType = sessionStorage.getItem('pending_payment_plan') || 'unknown'
+            track('payment_completed', {
+              planType: planType
+            })
+            sessionStorage.removeItem('pending_payment_plan')
+            
             alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
             // Перезагружаем страницу для полного обновления состояния
             window.location.reload()
@@ -95,6 +104,14 @@ function App() {
               const retryStatus = await subscriptionApi.checkLatestPaymentStatus()
               if (retryStatus.status === 'succeeded') {
                 await loadSubscriptionStatus()
+                
+                // Аналитика: успешная оплата
+                const planType = sessionStorage.getItem('pending_payment_plan') || 'unknown'
+                track('payment_completed', {
+                  planType: planType
+                })
+                sessionStorage.removeItem('pending_payment_plan')
+                
                 alert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
                 window.location.reload()
               } else {

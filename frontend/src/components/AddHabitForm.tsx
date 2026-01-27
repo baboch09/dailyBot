@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react'
+import { track } from '@vercel/analytics'
 import { habitsApi, subscriptionApi } from '../services/api'
 import { CreateHabitDto, SubscriptionStatus } from '../types'
 
@@ -58,6 +59,20 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         reminderTime: formData.reminderEnabled ? reminderTime : null,
         reminderEnabled: formData.reminderEnabled
       })
+      // Аналитика: добавление привычки
+      track('habit_created', {
+        hasReminder: formData.reminderEnabled,
+        isPremium: isPremium
+      })
+      
+      // Аналитика: установка напоминания при создании привычки (только для Pro)
+      if (formData.reminderEnabled && isPremium) {
+        track('reminder_installed', {
+          isPremium: true,
+          context: 'habit_creation'
+        })
+      }
+      
       setFormData({ name: '', description: '', reminderEnabled: true })
       setReminderTime('09:00')
       setIsOpen(false)
