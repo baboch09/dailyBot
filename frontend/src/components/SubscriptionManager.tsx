@@ -4,7 +4,11 @@ import SubscriptionPlans from './SubscriptionPlans'
 import { subscriptionApi } from '../services/api'
 import type { SubscriptionStatus as SubscriptionStatusType } from '../types'
 
-export default function SubscriptionManager() {
+interface SubscriptionManagerProps {
+  externalLoading?: boolean
+}
+
+export default function SubscriptionManager({ externalLoading = false }: SubscriptionManagerProps) {
   const [showPlans, setShowPlans] = useState(false)
   const [status, setStatus] = useState<SubscriptionStatusType | null>(null)
   const [loading, setLoading] = useState(true)
@@ -48,7 +52,7 @@ export default function SubscriptionManager() {
   const subscriptionLevel = isActive ? 'Premium' : 'Free'
 
   // Скелетон загрузки
-  if (loading) {
+  if (loading || externalLoading) {
     return (
       <div className="mb-4">
         <div className="p-4 rounded-[24px] shadow-lg mb-4 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">

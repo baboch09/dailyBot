@@ -13,6 +13,7 @@ function App() {
   const [error, setError] = useState('')
   const subscriptionRef = useRef<HTMLDivElement>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
+  const [subscriptionRefreshing, setSubscriptionRefreshing] = useState(false)
 
   // Инициализация Telegram WebApp
   useEffect(() => {
@@ -34,6 +35,31 @@ function App() {
       }
     } catch (error) {
       console.error('Error initializing WebApp:', error)
+    }
+  }, [])
+
+  // Глобальная обработка фокуса для не текстовых элементов
+  // Чтобы после нажатия фокус не "висел" на кнопках и других вью
+  useEffect(() => {
+    const handlePointerUp = () => {
+      const activeElement = document.activeElement as HTMLElement | null
+      if (!activeElement) return
+
+      const tag = activeElement.tagName
+      const isTextInput =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        activeElement.isContentEditable
+
+      if (!isTextInput && activeElement !== document.body) {
+        activeElement.blur()
+      }
+    }
+
+    document.addEventListener('pointerup', handlePointerUp)
+
+    return () => {
+      document.removeEventListener('pointerup', handlePointerUp)
     }
   }, [])
 
@@ -81,6 +107,9 @@ function App() {
       // Проверяем статус последнего платежа и активируем подписку если нужно
       const checkAndActivateSubscription = async () => {
         try {
+          // Пока проверяем/дожидаемся статуса платежа, показываем скелетон на карточке подписки
+          setSubscriptionRefreshing(true)
+
           // Проверяем статус последнего платежа
           const paymentStatus = await subscriptionApi.checkLatestPaymentStatus()
           
@@ -119,22 +148,29 @@ function App() {
                 await loadSubscriptionStatus()
                 alert('⏳ Платеж обрабатывается. Подписка будет активирована автоматически после подтверждения.')
               }
+              setSubscriptionRefreshing(false)
             }, 2000)
           } else {
             // Платеж не найден или отменен
             await loadSubscriptionStatus()
             alert('⚠️ Не удалось найти информацию о платеже. Пожалуйста, проверьте статус подписки.')
+            setSubscriptionRefreshing(false)
           }
         } catch (error) {
           console.error('Error checking payment status:', error)
           // В случае ошибки просто обновляем статус подписки
           await loadSubscriptionStatus()
           alert('⏳ Проверяем статус платежа. Если оплата прошла успешно, подписка будет активирована автоматически.')
+          setSubscriptionRefreshing(false)
         }
       }
       
       // Запускаем проверку с небольшой задержкой для обработки webhook
-      setTimeout(checkAndActivateSubscription, 1000)
+      setTimeout(async () => {
+        await checkAndActivateSubscription()
+        // На случай, если в checkAndActivateSubscription не дошли до снятия флага
+        setSubscriptionRefreshing(false)
+      }, 1000)
     } else if (paymentStatus === 'fail') {
       window.history.replaceState({}, '', window.location.pathname)
       setTimeout(() => {
@@ -237,7 +273,7 @@ function App() {
         )}
 
         <div ref={subscriptionRef}>
-          <SubscriptionManager />
+          <SubscriptionManager externalLoading={subscriptionRefreshing} />
         </div>
 
         <AddHabitForm 
