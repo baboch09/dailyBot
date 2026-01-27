@@ -38,46 +38,6 @@ function App() {
     }
   }, [])
 
-  // Глобальная обработка фокуса для не текстовых элементов
-  // Убираем фокус сразу при mousedown, чтобы не было задержки
-  useEffect(() => {
-    const handleMouseDown = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (!target) return
-
-      const tag = target.tagName
-      const isTextInput =
-        tag === 'INPUT' ||
-        tag === 'TEXTAREA' ||
-        target.isContentEditable
-
-      // Если кликнули по не-текстовому элементу, убираем фокус с текущего активного элемента
-      if (!isTextInput) {
-        const activeElement = document.activeElement as HTMLElement | null
-        if (activeElement && activeElement !== document.body) {
-          const activeTag = activeElement.tagName
-          const activeIsTextInput =
-            activeTag === 'INPUT' ||
-            activeTag === 'TEXTAREA' ||
-            activeElement.isContentEditable
-          
-          if (!activeIsTextInput) {
-            // Используем requestAnimationFrame чтобы не блокировать рендеринг
-            requestAnimationFrame(() => {
-              activeElement.blur()
-            })
-          }
-        }
-      }
-    }
-
-    document.addEventListener('mousedown', handleMouseDown, true) // true = capture phase, сработает раньше
-
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown, true)
-    }
-  }, [])
-
   // Загрузка привычек
   const loadHabits = async () => {
     try {
