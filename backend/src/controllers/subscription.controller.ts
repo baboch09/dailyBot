@@ -205,11 +205,10 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // Для Telegram Mini App return_url используется только как fallback
-    // При использовании openLink() браузер закроется автоматически после оплаты
-    // returnUrl на всякий случай указывает на главную страницу приложения
+    // Для Telegram Mini App используем специальную страницу возврата
+    // Эта страница автоматически закроется или вернет пользователя в Mini App
     const webAppUrl = config.webAppUrl
-    const returnUrl = `${webAppUrl}?payment_return=true`
+    const returnUrl = `${webAppUrl}/payment-return.html`
 
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах

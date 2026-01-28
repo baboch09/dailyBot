@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Возврат из оплаты</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+    .container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      max-width: 400px;
+    }
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+    p {
+      color: #666;
+      margin: 0;
+    }
+    .success {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="spinner"></div>
+    <h1>Обработка платежа...</h1>
+    <p>Пожалуйста, подождите</p>
+  </div>
+
+  <script>
+    // Помечаем что вернулись из оплаты
+    sessionStorage.setItem('payment_return', 'true');
+    
+    // Пробуем закрыть через Telegram WebApp API
+    if (window.Telegram && window.Telegram.WebApp) {
+      // Через небольшую задержку закрываем браузер и возвращаемся в Mini App
+      setTimeout(function() {
+        // Если это встроенный браузер Telegram, просто закрываем его
+        try {
+          window.Telegram.WebApp.close();
+        } catch (e) {
+          console.log('Could not close via Telegram API:', e);
+        }
+        
+        // Fallback: редирект на главную страницу Mini App
+        const appUrl = window.location.origin + '/?payment_return=true';
+        window.location.href = appUrl;
+      }, 1500);
+    } else {
+      // Если Telegram API недоступен, редиректим на главную
+      setTimeout(function() {
+        const appUrl = window.location.origin + '/?payment_return=true';
+        window.location.href = appUrl;
+      }, 1500);
+    }
+  </script>
+</body>
+</html>

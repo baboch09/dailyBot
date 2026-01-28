@@ -78,51 +78,10 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
     // Сохраняем метку, что платеж инициирован
     sessionStorage.setItem('payment_initiated', Date.now().toString())
     
-    const webApp = getWebApp()
-    
-    if (webApp) {
-      // Открываем страницу оплаты во встроенном браузере Telegram
-      // После оплаты браузер закроется автоматически и пользователь вернется в Mini App
-      console.log('Opening payment in Telegram internal browser...')
-      webApp.openLink(confirmationUrl)
-      
-      // Сразу начинаем периодически проверять статус платежа
-      // Когда пользователь закроет браузер и вернется, проверка обновит статус
-      const checkInterval = setInterval(async () => {
-        try {
-          console.log('Checking payment status...')
-          const result = await subscriptionApi.checkLatestPaymentStatus()
-          
-          if (result.hasPayment && result.status === 'succeeded') {
-            clearInterval(checkInterval)
-            sessionStorage.removeItem('payment_initiated')
-            
-            // Показываем уведомление об успешной оплате
-            if (webApp.showAlert) {
-              webApp.showAlert('✅ Подписка успешно активирована!')
-            }
-            
-            // Обновляем статус подписки
-            await loadStatus()
-          } else if (result.hasPayment && result.status === 'canceled') {
-            clearInterval(checkInterval)
-            sessionStorage.removeItem('payment_initiated')
-            console.log('Payment was canceled')
-          }
-        } catch (error) {
-          console.error('Error checking payment status:', error)
-        }
-      }, 3000) // Проверяем каждые 3 секунды
-      
-      // Останавливаем проверку через 5 минут (если пользователь не вернулся)
-      setTimeout(() => {
-        clearInterval(checkInterval)
-      }, 5 * 60 * 1000)
-    } else {
-      // Fallback для веб-версии (если открыто не через Telegram)
-      console.warn('Telegram WebApp not available, using fallback redirect')
-      window.location.href = confirmationUrl
-    }
+    // Открываем страницу оплаты в текущем окне Telegram WebView
+    // После оплаты пользователь нажмет "Вернуться на сайт" и вернется в приложение
+    console.log('Opening payment page...')
+    window.location.href = confirmationUrl
   }
 
   const togglePlans = () => {
