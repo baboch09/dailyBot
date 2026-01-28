@@ -134,7 +134,10 @@ function loadConfig(): AppConfig {
     },
 
     // URLs
-    webAppUrl: process.env.WEBAPP_URL || process.env.FRONTEND_URL || 'http://localhost:3000'
+    webAppUrl: process.env.WEBAPP_URL || 
+               process.env.FRONTEND_URL || 
+               process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 
+               'http://localhost:3000'
   }
 
   return config
@@ -150,6 +153,7 @@ console.log(`   YooKassa mode: ${config.yookassa.mode} ${config.yookassa.isTestM
 console.log(`   Shop ID: ${config.yookassa.shopId}`)
 console.log(`   Secret Key: ${config.yookassa.secretKey.substring(0, 10)}...`)
 console.log(`   Frontend URL: ${config.frontendUrl}`)
+console.log(`   WebApp URL: ${config.webAppUrl}`)
 console.log(`   Database: ${config.databaseUrl.split('@')[1] || 'configured'}`)
 
 // Предупреждение для продакшена
