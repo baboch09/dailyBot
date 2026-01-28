@@ -3,7 +3,7 @@
 ## 🔑 Ваши данные
 
 ```
-Shop ID:     1255129
+Shop ID:     1253644
 Secret Key:  live_XanR4WsL6WeuYg6mOgqPoM2QfcPUt7ntpWHAeGhhc7Y
 App URL:     https://daily-bot-drab.vercel.app
 Webhook URL: https://daily-bot-drab.vercel.app/api/payments/webhook

@@ -4,7 +4,7 @@
 
 ### 1. YooKassa настройки
 - [ ] Получен live ключ: `live_XanR4WsL6WeuYg6mOgqPoM2QfcPUt7ntpWHAeGhhc7Y` ✅
-- [ ] Shop ID: `1255129` ✅
+- [ ] Shop ID: `1253644` ✅
 - [ ] Проверен доступ к личному кабинету: https://yookassa.ru/my
 
 ### 2. Vercel настройки
@@ -170,5 +170,5 @@ vercel logs --follow
 **Дата создания:** 2026-01-28  
 **Статус:** ✅ Production Ready  
 **Live ключ:** live_XanR4WsL6WeuYg6mOgqPoM2QfcPUt7ntpWHAeGhhc7Y  
-**Shop ID:** 1255129  
+**Shop ID:** 1253644  
 **Webhook URL:** https://daily-bot-drab.vercel.app/api/payments/webhook

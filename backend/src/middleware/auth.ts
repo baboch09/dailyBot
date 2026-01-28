@@ -9,6 +9,7 @@ import prisma from '../utils/prisma'
 export async function authenticateUser(req: Request, res: Response, next: NextFunction) {
   try {
     const telegramId = req.headers['x-telegram-id'] as string
+    const telegramName = req.headers['x-telegram-username'] as string | undefined
 
     if (!telegramId) {
       console.error('Missing x-telegram-id header in request')
@@ -45,9 +46,19 @@ export async function authenticateUser(req: Request, res: Response, next: NextFu
 
     if (!user) {
       user = await prisma.user.create({
-        data: { telegramId: telegramIdNum }
+        data: { 
+          telegramId: telegramIdNum,
+          telegramName: telegramName || null
+        }
       })
-      console.log('Created new user with telegram_id:', telegramIdNum.toString())
+      console.log('Created new user with telegram_id:', telegramIdNum.toString(), 'username:', telegramName || 'none')
+    } else if (telegramName && user.telegramName !== telegramName) {
+      // Обновляем username если он изменился
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { telegramName: telegramName }
+      })
+      console.log('Updated username for user:', telegramIdNum.toString(), 'new username:', telegramName)
     }
 
     // Добавляем пользователя в request для использования в контроллерах

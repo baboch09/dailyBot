@@ -74,3 +74,43 @@ export function getTelegramUserId(): number | null {
     return null
   }
 }
+
+// Получить username пользователя (может быть null, если пользователь не установил username)
+export function getTelegramUsername(): string | null {
+  try {
+    const webApp = getWebApp()
+    if (!webApp) {
+      return null
+    }
+
+    // Пробуем получить из initDataUnsafe
+    if (webApp.initDataUnsafe?.user?.username) {
+      const username = webApp.initDataUnsafe.user.username
+      console.log('Got telegram username from initDataUnsafe:', username)
+      return username
+    }
+
+    // Fallback: парсим initData
+    try {
+      const initData = webApp.initData
+      if (initData) {
+        const params = new URLSearchParams(initData)
+        const userParam = params.get('user')
+        if (userParam) {
+          const user = JSON.parse(decodeURIComponent(userParam))
+          if (user.username) {
+            console.log('Got telegram username from initData:', user.username)
+            return user.username
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing username from initData:', e)
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error getting telegram username:', error)
+    return null
+  }
+}

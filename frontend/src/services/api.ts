@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getTelegramUserId } from '../utils/telegram'
+import { getTelegramUserId, getTelegramUsername } from '../utils/telegram'
 import type { 
   Habit, 
   HabitStats, 
@@ -53,7 +53,7 @@ const api = axios.create({
   }
 })
 
-// Интерцептор для добавления telegram_id в заголовки
+// Интерцептор для добавления telegram_id и username в заголовки
 api.interceptors.request.use((config) => {
   try {
     const telegramId = getTelegramUserId()
@@ -63,8 +63,15 @@ api.interceptors.request.use((config) => {
     } else {
       console.warn('No telegram_id available - request might fail authentication')
     }
+
+    // Добавляем username если доступен
+    const telegramUsername = getTelegramUsername()
+    if (telegramUsername) {
+      config.headers['x-telegram-username'] = telegramUsername
+      console.log('Added x-telegram-username header:', telegramUsername)
+    }
   } catch (error) {
-    console.error('Error setting telegram_id header:', error)
+    console.error('Error setting telegram headers:', error)
   }
   
   return config

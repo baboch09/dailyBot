@@ -15,11 +15,12 @@ datasource db {
 
 // Пользователь идентифицируется только по telegram_id
 model User {
-  id         String   @id @default(cuid())
-  telegramId BigInt   @unique // Используем BigInt для больших чисел telegram_id
-  timezone   String   @default("UTC+3") // Часовой пояс пользователя (например, "UTC+3", "UTC+0")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  telegramId   BigInt   @unique // Используем BigInt для больших чисел telegram_id
+  telegramName String?  // Username пользователя в Telegram (например, @username без @)
+  timezone     String   @default("UTC+3") // Часовой пояс пользователя (например, "UTC+3", "UTC+0")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Подписка
   subscriptionType     String?  @default("free") // Тип подписки: "free" | "premium" | "trial"
