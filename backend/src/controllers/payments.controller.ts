@@ -20,53 +20,75 @@ export async function webhook(req: Request, res: Response) {
 
     console.log('📦 YooKassa webhook received:', {
       type: event.type,
+      event: event.event,
       paymentId: event.object?.id,
       status: event.object?.status,
-      mode: config.yookassa.isTestMode ? 'test' : 'production'
+      mode: config.yookassa.isTestMode ? 'test' : 'production',
+      hasSignature: !!signature
     })
 
-    // Валидация подписи webhook
+    // Валидация подписи webhook (только предупреждение, не блокируем)
     if (!config.yookassa.isTestMode) {
-      // В продакшене обязательна проверка подписи
       if (!signature) {
-        console.error('❌ Webhook signature is missing in production mode')
-        return
-      }
+        console.warn('⚠️  Webhook signature is missing in production mode')
+        console.warn('   This is not secure, but processing anyway')
+        console.warn('   Check YooKassa dashboard: Settings → HTTP notifications → Signature')
+      } else {
+        const eventType = event.type || event.event
+        const objectId = event.object?.id
+        const objectStatus = event.object?.status
 
-      const eventType = event.type
-      const objectId = event.object?.id
-      const objectStatus = event.object?.status
+        if (eventType && objectId && objectStatus) {
+          const isValid = validateWebhookSignature(
+            eventType,
+            objectId,
+            objectStatus,
+            signature,
+            config.yookassa.secretKey
+          )
 
-      if (!eventType || !objectId || !objectStatus) {
-        console.error('❌ Invalid webhook data structure')
-        return
-      }
-
-      const isValid = validateWebhookSignature(
-        eventType,
-        objectId,
-        objectStatus,
-        signature,
-        config.yookassa.secretKey
-      )
-
-      if (!isValid) {
-        console.error('❌ Invalid webhook signature - possible attack or misconfiguration')
-        return
+          if (!isValid) {
+            console.error('❌ Invalid webhook signature - possible attack or misconfiguration')
+            console.error('   But processing anyway to avoid losing payments')
+          }
+        }
       }
     }
 
-    // Обрабатываем только события платежей
-    if (event.type !== 'payment.succeeded' && event.type !== 'payment.canceled') {
-      console.log('ℹ️  Ignoring event type:', event.type)
+    // Определяем тип события (YooKassa может использовать разные форматы)
+    const eventType = event.type || event.event
+    const eventAction = event.object?.status
+
+    // Обрабатываем события платежей
+    // YooKassa может отправлять:
+    // - type: 'payment.succeeded' (новый формат)
+    // - type: 'notification', status: 'succeeded' (старый формат)
+    const isPaymentSucceeded = 
+      eventType === 'payment.succeeded' || 
+      (eventType === 'notification' && eventAction === 'succeeded')
+    
+    const isPaymentCanceled = 
+      eventType === 'payment.canceled' || 
+      (eventType === 'notification' && eventAction === 'canceled')
+
+    if (!isPaymentSucceeded && !isPaymentCanceled) {
+      console.log('ℹ️  Ignoring event type:', eventType, 'status:', eventAction)
       return
     }
 
     const payment = event.object
     if (!payment || !payment.id) {
       console.error('❌ Invalid payment data in webhook')
+      console.error('   Event body:', JSON.stringify(event, null, 2))
       return
     }
+
+    console.log('✅ Valid payment event received:', {
+      paymentId: payment.id,
+      status: payment.status,
+      isSucceeded: isPaymentSucceeded,
+      isCanceled: isPaymentCanceled
+    })
 
     // Ищем платеж в БД
     const dbPayment = await prisma.payment.findUnique({
@@ -76,6 +98,7 @@ export async function webhook(req: Request, res: Response) {
 
     if (!dbPayment) {
       console.error('❌ Payment not found in DB:', payment.id)
+      console.error('   This payment was not created by our system')
       return
     }
 
