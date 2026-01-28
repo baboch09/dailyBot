@@ -169,26 +169,42 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
         textColor: 'text-gray-600 dark:text-gray-400',
         showBadge: false
       }
-    } else if (streak >= 1 && streak < 7) {
+    } else if (streak >= 1 && streak < 3) {
       return {
         emoji: '🌱',
-        label: 'Начало пути',
+        label: 'Это только начало',
         gradient: 'from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30',
         textColor: 'text-green-700 dark:text-green-300',
         showBadge: true
       }
-    } else if (streak >= 7 && streak < 21) {
+    } else if (streak >= 3 && streak < 7) {
+      return {
+        emoji: '🌿',
+        label: 'Набираешь обороты',
+        gradient: 'from-green-100 to-emerald-200 dark:from-green-900/30 dark:to-emerald-900/30',
+        textColor: 'text-green-700 dark:text-green-300',
+        showBadge: true
+      }
+    } else if (streak >= 7 && streak < 14) {
       return {
         emoji: '🔥',
-        label: 'В процессе',
+        label: 'Самое сложное позади',
         gradient: 'from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30',
+        textColor: 'text-orange-700 dark:text-orange-300',
+        showBadge: true
+      }
+    } else if (streak >= 14 && streak < 21) {
+      return {
+        emoji: '🔥',
+        label: 'Ты просто зверь!',
+        gradient: 'from-orange-100 to-red-200 dark:from-orange-900/30 dark:to-red-900/30',
         textColor: 'text-orange-700 dark:text-orange-300',
         showBadge: true
       }
     } else if (streak >= 21 && streak < 66) {
       return {
         emoji: '⚡',
-        label: 'Отличный результат',
+        label: 'Сила воли твоё второе имя',
         gradient: 'from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30',
         textColor: 'text-blue-700 dark:text-blue-300',
         showBadge: true
@@ -196,7 +212,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     } else if (streak >= 66 && streak < 100) {
       return {
         emoji: '⭐',
-        label: 'Мастер',
+        label: 'Это уже не привычка, а так пустяк',
         gradient: 'from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30',
         textColor: 'text-purple-700 dark:text-purple-300',
         showBadge: true
@@ -270,20 +286,20 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const streakStage = getStreakStage(habit.streak)
 
   return (
-    <div className={`group bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-lg hover:shadow-xl transition-all duration-300 border ${
+    <div className={`group bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-lg [@media(hover:hover)]:hover:shadow-xl transition-all duration-300 border ${
       habit.isCompletedToday 
         ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/10' 
-        : 'border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700'
+        : 'border-gray-100 dark:border-gray-700 [@media(hover:hover)]:hover:border-blue-200 [@media(hover:hover)]:dark:hover:border-blue-700'
     }`}>
       <div className="p-4">
         <div className="flex items-start gap-4">
           <button
             onClick={handleComplete}
             disabled={isCompleting}
-            className={`relative w-12 h-12 rounded-[16px] flex-shrink-0 transition-all duration-300 transform hover:scale-110 ${
+            className={`relative w-12 h-12 rounded-[16px] flex-shrink-0 transition-all duration-300 transform [@media(hover:hover)]:hover:scale-110 ${
               habit.isCompletedToday
                 ? 'bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/50'
-                : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 hover:from-green-100 hover:to-green-200 dark:hover:from-green-900/30 dark:hover:to-green-800/30 border-2 border-gray-200 dark:border-gray-600'
+                : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 [@media(hover:hover)]:hover:from-green-100 [@media(hover:hover)]:hover:to-green-200 [@media(hover:hover)]:dark:hover:from-green-900/30 [@media(hover:hover)]:dark:hover:to-green-800/30 border-2 border-gray-200 dark:border-gray-600'
             } ${isCompleting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
             {isCompleting ? (
@@ -343,7 +359,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   <button
                     onClick={handleUpdateHabit}
                     disabled={isUpdatingHabit}
-                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 [@media(hover:hover)]:hover:from-blue-600 [@media(hover:hover)]:hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isUpdatingHabit ? 'Сохранение...' : 'Сохранить'}
                   </button>
@@ -353,7 +369,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                       setEditingName(habit.name)
                       setEditingDescription(habit.description || '')
                     }}
-                    className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
+                    className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 [@media(hover:hover)]:hover:border-gray-300 [@media(hover:hover)]:dark:hover:border-gray-600 rounded-full [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
                   >
                     Отмена
                   </button>
@@ -374,7 +390,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   <div className="relative habit-menu">
                     <button
                       onClick={() => setShowMenu(!showMenu)}
-                      className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center"
+                      className="p-2 rounded-full [@media(hover:hover)]:hover:bg-gray-100 [@media(hover:hover)]:dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 [@media(hover:hover)]:hover:text-gray-700 [@media(hover:hover)]:dark:hover:text-gray-200 flex items-center"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -389,7 +405,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                             setIsEditingHabit(true)
                             setShowMenu(false)
                           }}
-                          className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                          className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -402,7 +418,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                               setIsEditingReminder(true)
                               setShowMenu(false)
                             }}
-                            className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                            className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -416,7 +432,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                             handleDelete()
                           }}
                           disabled={isDeleting}
-                          className="w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 disabled:opacity-50"
+                          className="w-full px-4 py-3 text-left text-sm text-red-600 dark:text-red-400 [@media(hover:hover)]:hover:bg-red-50 [@media(hover:hover)]:dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 disabled:opacity-50"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -482,7 +498,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                             type="time"
                             value={reminderTime}
                             onChange={(e) => setReminderTime(e.target.value)}
-                            className="w-full max-w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm box-border"
+                            className="w-full min-w-0 px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm box-border"
                           />
                         </div>
                       )}
@@ -490,7 +506,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                         <button
                           onClick={handleUpdateReminder}
                           disabled={isUpdatingReminder}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 [@media(hover:hover)]:hover:from-blue-600 [@media(hover:hover)]:hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isUpdatingReminder ? 'Сохранение...' : 'Сохранить'}
                         </button>
@@ -500,7 +516,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                             setReminderTime(habit.reminderTime || '09:00')
                             setReminderEnabled(habit.reminderEnabled ?? false)
                           }}
-                          className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
+                          className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 [@media(hover:hover)]:hover:border-gray-300 [@media(hover:hover)]:dark:hover:border-gray-600 rounded-full [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
                         >
                           Отмена
                         </button>

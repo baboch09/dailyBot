@@ -231,7 +231,7 @@ function App() {
                                    subscriptionStatus?.subscriptionExpiresAt && 
                                    new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
                                    (subscriptionStatus?.daysRemaining || 0) > 0
-                  return isPremium ? ' / ∞' : ` / 3`
+                  return isPremium ? ' из ∞' : ` из 3`
                 })()}
               </span>
             </div>
