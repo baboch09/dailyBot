@@ -16,6 +16,9 @@ declare global {
         ready: () => void
         expand: () => void
         close: () => void
+        openLink: (url: string) => void
+        showAlert: (message: string) => void
+        showPopup: (params: { message: string, buttons?: Array<{ id?: string, type?: string, text: string }> }) => void
         themeParams: {
           bg_color?: string
           text_color?: string

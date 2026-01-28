@@ -15,7 +15,51 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
 
   useEffect(() => {
     loadStatus()
+    
+    // Проверяем, вернулся ли пользователь после оплаты
+    checkReturnFromPayment()
   }, [])
+
+  const checkReturnFromPayment = async () => {
+    const paymentInitiated = sessionStorage.getItem('payment_initiated')
+    if (!paymentInitiated) return
+
+    const initiatedTime = parseInt(paymentInitiated)
+    const now = Date.now()
+    
+    // Если платеж был инициирован недавно (в течение 30 минут)
+    if (now - initiatedTime < 30 * 60 * 1000) {
+      console.log('Checking payment status after return...')
+      
+      try {
+        // Проверяем статус последнего платежа
+        const result = await subscriptionApi.checkLatestPaymentStatus()
+        
+        if (result.hasPayment && result.status === 'succeeded') {
+          console.log('Payment succeeded! Reloading status...')
+          
+          // Очищаем метку
+          sessionStorage.removeItem('payment_initiated')
+          
+          // Перезагружаем статус подписки
+          await loadStatus()
+          
+          // Показываем уведомление (если есть Telegram WebApp API)
+          if (window.Telegram?.WebApp?.showAlert) {
+            window.Telegram.WebApp.showAlert('✅ Подписка успешно активирована!')
+          }
+        } else if (result.hasPayment && result.status === 'pending') {
+          console.log('Payment still pending, will check again later')
+          // Можно показать уведомление о том, что платеж обрабатывается
+        }
+      } catch (error) {
+        console.error('Error checking payment status:', error)
+      }
+    } else {
+      // Платеж был давно, удаляем метку
+      sessionStorage.removeItem('payment_initiated')
+    }
+  }
 
   const loadStatus = async () => {
     try {
@@ -30,7 +74,17 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
   }
 
   const handlePaymentCreated = (confirmationUrl: string) => {
-    window.location.href = confirmationUrl
+    // Открываем ссылку через Telegram WebApp API
+    // Это откроет браузер, после оплаты пользователь вернется через кнопку "Назад"
+    if (window.Telegram?.WebApp?.openLink) {
+      window.Telegram.WebApp.openLink(confirmationUrl)
+      
+      // После открытия ссылки сохраняем метку, что платеж инициирован
+      sessionStorage.setItem('payment_initiated', Date.now().toString())
+    } else {
+      // Fallback для веб-версии
+      window.open(confirmationUrl, '_blank')
+    }
   }
 
   const togglePlans = () => {

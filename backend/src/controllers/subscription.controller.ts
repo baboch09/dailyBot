@@ -199,10 +199,11 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // Редирект должен вести на приложение, а не на страницу успеха
+    // Для Telegram Mini App return_url не работает (Telegram блокирует редиректы)
+    // Пользователь вернется через кнопку "Назад" в браузере
+    // После возврата frontend автоматически проверит статус платежа
     const webAppUrl = config.webAppUrl
-    const successUrl = `${webAppUrl}?payment=success`
-    const failUrl = `${webAppUrl}?payment=fail`
+    const returnUrl = `${webAppUrl}?from=payment`
 
     // Создаем платеж в ЮКассе
     const payment = await createPayment(
@@ -210,7 +211,7 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       config.yookassa.secretKey,
       plan.price,
       `Подписка "${plan.name}" - Трекер привычек`,
-      successUrl,
+      returnUrl,
       {
         userId: user.id,
         planId: planId,
