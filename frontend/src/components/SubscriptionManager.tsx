@@ -74,17 +74,12 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
   }
 
   const handlePaymentCreated = (confirmationUrl: string) => {
-    // Открываем ссылку через Telegram WebApp API
-    // Это откроет браузер, после оплаты пользователь вернется через кнопку "Назад"
-    if (window.Telegram?.WebApp?.openLink) {
-      window.Telegram.WebApp.openLink(confirmationUrl)
-      
-      // После открытия ссылки сохраняем метку, что платеж инициирован
-      sessionStorage.setItem('payment_initiated', Date.now().toString())
-    } else {
-      // Fallback для веб-версии
-      window.open(confirmationUrl, '_blank')
-    }
+    // Сохраняем метку, что платеж инициирован
+    sessionStorage.setItem('payment_initiated', Date.now().toString())
+    
+    // Открываем страницу оплаты в том же окне (Telegram WebView)
+    // После оплаты пользователь вернется кнопкой "Назад"
+    window.location.href = confirmationUrl
   }
 
   const togglePlans = () => {
