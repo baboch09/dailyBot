@@ -75,7 +75,9 @@ function App() {
     // Обработка редиректа после оплаты
     const urlParams = new URLSearchParams(window.location.search)
     const paymentStatus = urlParams.get('payment')
-    if (paymentStatus === 'success') {
+    const paymentReturn = urlParams.get('payment_return')
+    
+    if (paymentStatus === 'success' || paymentReturn === 'true') {
       // Убираем параметр из URL сразу
       window.history.replaceState({}, '', window.location.pathname)
       

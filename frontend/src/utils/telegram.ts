@@ -16,9 +16,10 @@ declare global {
         ready: () => void
         expand: () => void
         close: () => void
-        openLink: (url: string) => void
-        showAlert: (message: string) => void
-        showPopup: (params: { message: string, buttons?: Array<{ id?: string, type?: string, text: string }> }) => void
+        openLink: (url: string, options?: { try_instant_view?: boolean }) => void
+        openTelegramLink: (url: string) => void
+        showAlert: (message: string, callback?: () => void) => void
+        showPopup: (params: { message: string, buttons?: Array<{ id?: string, type?: string, text: string }> }, callback?: (buttonId: string) => void) => void
         themeParams: {
           bg_color?: string
           text_color?: string
