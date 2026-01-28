@@ -3,8 +3,8 @@
  * Документация: https://yookassa.ru/developers/api
  */
 
-const YOOKASSA_API_URL = 'https://api.yookassa.ru/v3'
-const YOOKASSA_TEST_API_URL = 'https://api.yookassa.ru/v3'
+import * as crypto from 'crypto'
+import { config } from '../config'
 
 interface PaymentRequest {
   amount: {
@@ -46,7 +46,7 @@ export async function createPayment(
   returnUrl: string,
   metadata?: Record<string, string>
 ): Promise<PaymentResponse> {
-  const apiUrl = process.env.YUKASSA_TEST_MODE === 'true' ? YOOKASSA_TEST_API_URL : YOOKASSA_API_URL
+  const apiUrl = config.yookassa.apiUrl
   
   const paymentData: PaymentRequest = {
     amount: {
@@ -90,7 +90,7 @@ export async function getPayment(
   secretKey: string,
   paymentId: string
 ): Promise<PaymentResponse> {
-  const apiUrl = process.env.YUKASSA_TEST_MODE === 'true' ? YOOKASSA_TEST_API_URL : YOOKASSA_API_URL
+  const apiUrl = config.yookassa.apiUrl
   
   const auth = Buffer.from(`${shopId}:${secretKey}`).toString('base64')
 
@@ -111,35 +111,99 @@ export async function getPayment(
 
 /**
  * Валидация подписи webhook от ЮКассы
- * Важно: в реальном проекте нужно проверять подпись для безопасности
  * 
- * Документация: https://yookassa.ru/developers/payments/payment-notifications
+ * YooKassa использует HTTP-уведомления с подписью для безопасности.
+ * Документация: https://yookassa.ru/developers/using-api/webhooks
  * 
- * Примечание: В тестовом режиме подпись может отсутствовать или быть некорректной,
- * поэтому для тестирования пропускаем проверку.
+ * Подпись вычисляется как SHA256 хеш от конкатенации:
+ * event_type + '&' + object.id + '&' + object.status + '&' + secret_key
  */
-export function validateWebhookSignature(data: any, signature: string): boolean {
-  // Для тестового режима пропускаем проверку
-  if (process.env.YUKASSA_TEST_MODE === 'true') {
-    console.log('⚠️ Test mode: skipping webhook signature validation')
+export function validateWebhookSignature(
+  eventType: string,
+  objectId: string,
+  objectStatus: string,
+  receivedSignature: string,
+  secretKey: string
+): boolean {
+  // В тестовом режиме пропускаем проверку
+  // YooKassa может не отправлять подпись в тестовом режиме
+  if (config.yookassa.isTestMode) {
+    console.log('🧪 Test mode: skipping webhook signature validation')
     return true
   }
   
   // В продакшене обязательно проверяем подпись
-  if (!signature) {
-    console.error('❌ Webhook signature is missing')
+  if (!receivedSignature) {
+    console.error('❌ Webhook signature is missing in production mode')
     return false
   }
   
-  // TODO: Реализовать полную проверку подписи согласно документации ЮКассы
-  // Для этого нужно:
-  // 1. Получить секретный ключ из переменных окружения
-  // 2. Вычислить HMAC-SHA256 подпись из тела запроса
-  // 3. Сравнить с полученной подписью
-  // 
-  // Пока что в продакшене требуем наличие подписи, но не проверяем её корректность
-  // Это временное решение - нужно реализовать полную проверку перед продакшеном
+  try {
+    // Формируем строку для подписи согласно документации YooKassa
+    // Формат: notification_type&object_id&объект_статуса
+    // Пример: payment.succeeded&payment_id&succeeded
+    const signatureString = `${eventType}&${objectId}&${objectStatus}&${secretKey}`
+    
+    // Вычисляем SHA-256 хеш
+    const calculatedSignature = crypto
+      .createHash('sha256')
+      .update(signatureString)
+      .digest('hex')
+    
+    // Сравниваем подписи (case-insensitive)
+    const isValid = calculatedSignature.toLowerCase() === receivedSignature.toLowerCase()
+    
+    if (!isValid) {
+      console.error('❌ Webhook signature validation failed')
+      console.error('   Expected:', calculatedSignature)
+      console.error('   Received:', receivedSignature)
+    } else {
+      console.log('✅ Webhook signature validated successfully')
+    }
+    
+    return isValid
+  } catch (error) {
+    console.error('❌ Error validating webhook signature:', error)
+    return false
+  }
+}
+
+/**
+ * Альтернативная проверка подписи webhook (если YooKassa использует другой формат)
+ * Некоторые платежные системы используют HMAC-SHA256 вместо простого SHA256
+ */
+export function validateWebhookSignatureHMAC(
+  requestBody: string,
+  receivedSignature: string,
+  secretKey: string
+): boolean {
+  if (config.yookassa.isTestMode) {
+    console.log('🧪 Test mode: skipping HMAC webhook signature validation')
+    return true
+  }
   
-  console.warn('⚠️ Webhook signature validation not fully implemented - signature present but not verified')
-  return true
+  if (!receivedSignature) {
+    console.error('❌ Webhook signature is missing in production mode')
+    return false
+  }
+  
+  try {
+    // Вычисляем HMAC-SHA256
+    const hmac = crypto.createHmac('sha256', secretKey)
+    hmac.update(requestBody)
+    const calculatedSignature = hmac.digest('hex')
+    
+    const isValid = calculatedSignature.toLowerCase() === receivedSignature.toLowerCase()
+    
+    if (!isValid) {
+      console.error('❌ HMAC webhook signature validation failed')
+    } else {
+      console.log('✅ HMAC webhook signature validated successfully')
+    }
+    
+    return isValid
+  } catch (error) {
+    console.error('❌ Error validating HMAC webhook signature:', error)
+    return false
+  }
 }

@@ -1,10 +1,7 @@
 import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
 import { createPayment, getPayment } from '../utils/yookassa'
-
-// Проверяем наличие обязательных переменных окружения
-const SHOP_ID = process.env.YUKASSA_SHOP_ID
-const SECRET_KEY = process.env.YUKASSA_SECRET_KEY
+import { config } from '../config'
 
 // Тарифы подписки
 const SUBSCRIPTION_PLANS = {
@@ -161,9 +158,13 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     if (pendingPayment) {
       // Проверяем статус существующего платежа в ЮКассе
-      if (pendingPayment.yookassaId && SHOP_ID && SECRET_KEY) {
+      if (pendingPayment.yookassaId) {
         try {
-          const yookassaPayment = await getPayment(SHOP_ID, SECRET_KEY, pendingPayment.yookassaId)
+          const yookassaPayment = await getPayment(
+            config.yookassa.shopId,
+            config.yookassa.secretKey,
+            pendingPayment.yookassaId
+          )
           
           // Обновляем статус в БД
           await prisma.payment.update({
@@ -198,27 +199,15 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    if (!SHOP_ID || !SECRET_KEY) {
-      console.error('❌ YUKASSA_SHOP_ID or YUKASSA_SECRET_KEY is not set')
-      return res.status(500).json({ 
-        error: 'Payment service not configured',
-        message: 'YooKassa credentials are missing'
-      })
-    }
-
-    // После проверки TypeScript знает, что они не undefined
-    const shopId = SHOP_ID
-    const secretKey = SECRET_KEY
-
     // Редирект должен вести на приложение, а не на страницу успеха
-    const webAppUrl = process.env.WEBAPP_URL || process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`
+    const webAppUrl = config.webAppUrl
     const successUrl = `${webAppUrl}?payment=success`
     const failUrl = `${webAppUrl}?payment=fail`
 
     // Создаем платеж в ЮКассе
     const payment = await createPayment(
-      shopId,
-      secretKey,
+      config.yookassa.shopId,
+      config.yookassa.secretKey,
       plan.price,
       `Подписка "${plan.name}" - Трекер привычек`,
       successUrl,
@@ -250,13 +239,15 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
     // В продакшене лучше использовать очередь задач (Vercel Queue, Bull и т.д.) или полагаться на webhook
     // Пока оставляем для локальной разработки, но в продакшене это не сработает надежно
     // Webhook от ЮКассы обработает обновление статуса платежа
-    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_PAYMENT_POLLING === 'true') {
+    if (config.nodeEnv !== 'production' || process.env.ENABLE_PAYMENT_POLLING === 'true') {
       // Только для локальной разработки или если явно включено
       setTimeout(async () => {
         try {
-          if (!shopId || !secretKey) return
-          
-          const latestPayment = await getPayment(shopId, secretKey, payment.id)
+          const latestPayment = await getPayment(
+            config.yookassa.shopId,
+            config.yookassa.secretKey,
+            payment.id
+          )
           if (latestPayment.status !== dbPayment.status) {
             await prisma.payment.update({
               where: { id: dbPayment.id },
@@ -354,15 +345,12 @@ export async function checkLatestPaymentStatus(req: Request, res: Response) {
       return res.status(400).json({ error: 'Payment has no YooKassa ID' })
     }
 
-    if (!SHOP_ID || !SECRET_KEY) {
-      return res.status(500).json({ error: 'YooKassa credentials not configured' })
-    }
-
-    const shopId = SHOP_ID
-    const secretKey = SECRET_KEY
-
     // Получаем актуальный статус из ЮКассы
-    const payment = await getPayment(shopId, secretKey, latestPayment.yookassaId)
+    const payment = await getPayment(
+      config.yookassa.shopId,
+      config.yookassa.secretKey,
+      latestPayment.yookassaId
+    )
 
     // Обновляем статус в БД
     await prisma.payment.update({
@@ -448,16 +436,12 @@ export async function checkPaymentStatus(req: Request, res: Response) {
       return res.status(400).json({ error: 'Payment has no YooKassa ID' })
     }
 
-    if (!SHOP_ID || !SECRET_KEY) {
-      return res.status(500).json({ error: 'YooKassa credentials not configured' })
-    }
-
-    // После проверки TypeScript знает, что они не undefined
-    const shopId = SHOP_ID
-    const secretKey = SECRET_KEY
-
     // Получаем актуальный статус из ЮКассы
-    const payment = await getPayment(shopId, secretKey, dbPayment.yookassaId)
+    const payment = await getPayment(
+      config.yookassa.shopId,
+      config.yookassa.secretKey,
+      dbPayment.yookassaId
+    )
 
     // Обновляем статус в БД
     await prisma.payment.update({

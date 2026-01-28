@@ -1,34 +1,33 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import habitsRoutes from './routes/habits.routes'
-import subscriptionRoutes from './routes/subscription.routes'
-import paymentsRoutes from './routes/payments.routes'
 
 // Загружаем переменные окружения
 dotenv.config()
 
+// Импортируем config ПОСЛЕ загрузки .env для валидации переменных окружения
+import { config } from './config'
+import habitsRoutes from './routes/habits.routes'
+import subscriptionRoutes from './routes/subscription.routes'
+import paymentsRoutes from './routes/payments.routes'
+
 const app = express()
-const PORT = process.env.PORT || 5001
+const PORT = config.port
 
 // Middleware
-// CORS настройки: в продакшене лучше указать конкретные домены
+// CORS настройки
 const corsOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  // Локальная разработка
+  config.frontendUrl,
   'http://localhost:3000',
-  // Vercel
   /\.vercel\.app$/,
   /\.vercel\.com$/
 ]
 
 // В продакшене добавляем конкретные домены из переменных окружения
-if (process.env.NODE_ENV === 'production' && process.env.ALLOWED_ORIGINS) {
-  const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  corsOrigins.push(...allowedOrigins)
-} else if (process.env.NODE_ENV === 'production') {
-  // Если не указаны конкретные домены, разрешаем все (небезопасно, но для гибкости)
-  console.warn('⚠️ ALLOWED_ORIGINS not set in production - allowing all origins')
+if (config.allowedOrigins && config.allowedOrigins.length > 0) {
+  corsOrigins.push(...config.allowedOrigins)
+} else if (config.nodeEnv === 'production') {
+  console.warn('⚠️ ALLOWED_ORIGINS not set in production - consider setting it for security')
 }
 
 app.use(cors({
@@ -55,7 +54,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   // Структурированное логирование ошибок
   const errorDetails = {
     message: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    stack: config.nodeEnv === 'development' ? err.stack : undefined,
     path: req.path,
     method: req.method,
     timestamp: new Date().toISOString()
@@ -64,13 +63,13 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   console.error('Error details:', errorDetails)
   
   // В продакшене можно отправлять в систему мониторинга (Sentry и т.д.)
-  // if (process.env.NODE_ENV === 'production') {
+  // if (config.nodeEnv === 'production') {
   //   // Sentry.captureException(err)
   // }
   
   res.status(err.status || 500).json({ 
     error: 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { details: err.message })
+    ...(config.nodeEnv === 'development' && { details: err.message })
   })
 })
 

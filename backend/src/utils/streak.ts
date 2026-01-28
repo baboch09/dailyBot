@@ -1,32 +1,41 @@
 import prisma from './prisma'
 
 /**
- * Получает текущий день (начало дня в UTC)
+ * Нормализует дату к началу дня в UTC
  */
-export function getCurrentPeriod(): Date {
-  const today = new Date()
-  today.setUTCHours(0, 0, 0, 0)
-  return today
+function normalizeToStartOfDay(date: Date): Date {
+  const normalized = new Date(date)
+  normalized.setUTCHours(0, 0, 0, 0)
+  return normalized
 }
 
 /**
- * Получает следующий день
+ * Получает начало следующего дня в UTC
  */
-export function getNextPeriod(currentPeriod: Date): Date {
-  const next = new Date(currentPeriod)
+function getNextDay(date: Date): Date {
+  const next = new Date(date)
   next.setUTCDate(next.getUTCDate() + 1)
   return next
 }
 
 /**
- * Получает предыдущий день
+ * Получает начало предыдущего дня в UTC
  */
-export function getPreviousPeriod(currentPeriod: Date): Date {
-  return new Date(currentPeriod.getTime() - 24 * 60 * 60 * 1000)
+function getPreviousDay(date: Date): Date {
+  const prev = new Date(date)
+  prev.setUTCDate(prev.getUTCDate() - 1)
+  return prev
 }
 
 /**
  * Вычисляет streak (дней подряд) для привычки
+ * 
+ * Алгоритм:
+ * 1. Получаем все логи привычки (отсортированные по дате)
+ * 2. Нормализуем даты к началу дня в UTC
+ * 3. Проверяем, есть ли лог за сегодня
+ * 4. Идем по датам назад и считаем последовательные дни
+ * 5. Прерываем подсчет при первом пропущенном дне
  */
 export async function calculateStreak(habitId: string): Promise<number> {
   // Получаем все логи привычки, отсортированные по дате (от новых к старым)
@@ -39,81 +48,38 @@ export async function calculateStreak(habitId: string): Promise<number> {
     return 0
   }
 
-  const today = getCurrentPeriod()
+  // Получаем текущий день (начало дня в UTC)
+  const today = normalizeToStartOfDay(new Date())
 
   // Нормализуем даты логов к началу дня
-  const normalizedLogs = logs.map(log => {
-    const logDate = new Date(log.date)
-    logDate.setUTCHours(0, 0, 0, 0)
-    logDate.setUTCMinutes(0, 0, 0)
-    logDate.setUTCSeconds(0, 0)
-    logDate.setUTCMilliseconds(0)
-    return logDate
-  })
+  const normalizedLogs = logs.map(log => normalizeToStartOfDay(new Date(log.date)))
 
-  // Проверяем, выполнена ли привычка в текущем периоде
-  const todayLog = normalizedLogs.find(logDate => logDate.getTime() === today.getTime())
-  console.log(`🔍 Streak calculation for habit ${habitId}:`, {
-    totalLogs: logs.length,
-    normalizedLogsCount: normalizedLogs.length,
-    todayPeriod: today.toISOString(),
-    hasTodayLog: !!todayLog,
-    firstLogDate: normalizedLogs[0]?.toISOString(),
-    allNormalizedLogs: normalizedLogs.map(l => l.toISOString())
-  })
+  // Проверяем, выполнена ли привычка сегодня
+  const hasTodayLog = normalizedLogs.some(logDate => logDate.getTime() === today.getTime())
 
-  // Если в текущем периоде не выполнена, начинаем считать с предыдущего периода
-  // Важно: today уже нормализован через getCurrentPeriod()
-  // Если есть лог для текущего периода, streak начинается с 1, и мы проверяем предыдущий период
-  // Если нет лога для текущего периода, streak начинается с 0, и мы проверяем предыдущий период
-  let checkDate = getPreviousPeriod(today)
-  let streak = todayLog ? 1 : 0
-  console.log(`📊 Starting streak calculation:`, { 
-    checkDate: checkDate.toISOString(), 
-    initialStreak: streak,
-    todayLogIndex: todayLog ? normalizedLogs.indexOf(todayLog) : -1,
-    hasTodayLog: !!todayLog
-  })
+  // Если нет лога за сегодня, streak = 0
+  // Если есть лог за сегодня, начинаем с streak = 1 и проверяем предыдущие дни
+  if (!hasTodayLog) {
+    return 0
+  }
 
-  // Идём по логам и считаем последовательные дни
-  // Важно: normalizedLogs уже отсортированы по дате (от новых к старым)
-  // Если есть лог для текущего дня, начинаем со следующего лога (предыдущий день)
-  // Если нет лога для текущего дня, начинаем с первого лога (предыдущий день)
-  const startIndex = todayLog ? 1 : 0
-  for (let i = startIndex; i < normalizedLogs.length; i++) {
+  let streak = 1
+  let checkDate = getPreviousDay(today)
+
+  // Идем по логам, начиная со второго (первый - это сегодняшний)
+  for (let i = 1; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
-    
-    // Нормализуем checkDate перед сравнением
-    // checkDate уже должен быть нормализован через getPreviousPeriod, но нормализуем снова для уверенности
-    const normalizedCheckDate = new Date(checkDate)
-    normalizedCheckDate.setUTCHours(0, 0, 0, 0)
-    normalizedCheckDate.setUTCMinutes(0, 0, 0)
-    normalizedCheckDate.setUTCSeconds(0, 0)
-    normalizedCheckDate.setUTCMilliseconds(0)
 
-    // Сравниваем нормализованные даты
-    if (logDate.getTime() === normalizedCheckDate.getTime()) {
+    if (logDate.getTime() === checkDate.getTime()) {
+      // Нашли лог за ожидаемый день - увеличиваем streak
       streak++
-      console.log(`✅ Found consecutive period:`, { 
-        logDate: logDate.toISOString(), 
-        checkDate: normalizedCheckDate.toISOString(), 
-        currentStreak: streak,
-        index: i
-      })
-      checkDate = getPreviousPeriod(normalizedCheckDate)
+      checkDate = getPreviousDay(checkDate)
     } else {
-      // Если есть пропуск, прекращаем подсчёт
-      console.log(`❌ Streak broken:`, { 
-        logDate: logDate.toISOString(), 
-        expectedDate: normalizedCheckDate.toISOString(),
-        finalStreak: streak,
-        index: i
-      })
+      // Пропущен день - прерываем подсчет
       break
     }
   }
 
-  console.log(`🎯 Final streak for habit ${habitId}: ${streak}`)
   return streak
 }
 
@@ -121,8 +87,8 @@ export async function calculateStreak(habitId: string): Promise<number> {
  * Проверяет, выполнена ли привычка сегодня
  */
 export async function isCompletedToday(habitId: string): Promise<boolean> {
-  const today = getCurrentPeriod()
-  const tomorrow = getNextPeriod(today)
+  const today = normalizeToStartOfDay(new Date())
+  const tomorrow = getNextDay(today)
 
   const log = await prisma.habitLog.findFirst({
     where: {

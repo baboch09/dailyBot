@@ -1,8 +1,35 @@
 import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
-import { calculateStreak, isCompletedToday, getCurrentPeriod, getNextPeriod, getPreviousPeriod } from '../utils/streak'
+import { calculateStreak, isCompletedToday } from '../utils/streak'
 import { validationResult } from 'express-validator'
 import { FREE_HABITS_LIMIT } from '../middleware/subscription'
+
+/**
+ * Нормализует дату к началу дня в UTC
+ */
+function normalizeToStartOfDay(date: Date): Date {
+  const normalized = new Date(date)
+  normalized.setUTCHours(0, 0, 0, 0)
+  return normalized
+}
+
+/**
+ * Получает начало следующего дня в UTC
+ */
+function getNextDay(date: Date): Date {
+  const next = new Date(date)
+  next.setUTCDate(next.getUTCDate() + 1)
+  return next
+}
+
+/**
+ * Получает начало предыдущего дня в UTC
+ */
+function getPreviousDay(date: Date): Date {
+  const prev = new Date(date)
+  prev.setUTCDate(prev.getUTCDate() - 1)
+  return prev
+}
 
 /**
  * Получить все привычки пользователя
@@ -26,8 +53,8 @@ export async function getHabits(req: Request, res: Response) {
       }
     })
 
-    const today = getCurrentPeriod()
-    const tomorrow = getNextPeriod(today)
+    const today = normalizeToStartOfDay(new Date())
+    const tomorrow = getNextDay(today)
 
     // Добавляем streak и флаг выполнения за сегодня для каждой привычки
     // Используем последовательную обработку вместо Promise.all для уменьшения нагрузки на БД
@@ -87,7 +114,7 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
   // Если в текущем периоде не выполнена, начинаем считать с предыдущего периода
   // Если есть лог для текущего периода, streak начинается с 1, и мы проверяем предыдущий период
   // Если нет лога для текущего периода, streak начинается с 0, и мы проверяем предыдущий период
-  let checkDate = getPreviousPeriod(today)
+  let checkDate = getPreviousDay(today)
   let streak = todayLog ? 1 : 0
 
   // Идём по логам и считаем последовательные дни
@@ -99,17 +126,13 @@ function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): numb
     const logDate = normalizedLogs[i]
     
     // Нормализуем checkDate перед сравнением
-    // checkDate уже должен быть нормализован через getPreviousPeriod, но нормализуем снова для уверенности
-    const normalizedCheckDate = new Date(checkDate)
-    normalizedCheckDate.setUTCHours(0, 0, 0, 0)
-    normalizedCheckDate.setUTCMinutes(0, 0, 0)
-    normalizedCheckDate.setUTCSeconds(0, 0)
-    normalizedCheckDate.setUTCMilliseconds(0)
+    // checkDate уже должен быть нормализован через getPreviousDay, но нормализуем снова для уверенности
+    const normalizedCheckDate = normalizeToStartOfDay(checkDate)
 
     // Сравниваем нормализованные даты
     if (logDate.getTime() === normalizedCheckDate.getTime()) {
       streak++
-      checkDate = getPreviousPeriod(normalizedCheckDate)
+      checkDate = getPreviousDay(normalizedCheckDate)
     } else {
       // Если есть пропуск, прекращаем подсчёт
       break
@@ -442,8 +465,8 @@ export async function completeHabitToday(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
-    const today = getCurrentPeriod()
-    const tomorrow = getNextPeriod(today)
+    const today = normalizeToStartOfDay(new Date())
+    const tomorrow = getNextDay(today)
 
     // Используем транзакцию для атомарной операции toggle
     // Это предотвращает race condition при одновременных запросах
@@ -470,12 +493,12 @@ export async function completeHabitToday(req: Request, res: Response) {
 
       // Создаём новую отметку используя upsert для защиты от race condition
       // Но так как у нас уникальный индекс на (habitId, date), используем create с обработкой ошибки
-      // Важно: используем нормализованную дату (today), которая уже округлена до периода
+      // Важно: используем нормализованную дату (today), которая уже округлена до начала дня
       try {
         const newLog = await tx.habitLog.create({
           data: {
             habitId: id,
-            date: today // today уже нормализован через getCurrentPeriod()
+            date: today // today уже нормализован к началу дня
           }
         })
         return { completed: true, log: newLog }

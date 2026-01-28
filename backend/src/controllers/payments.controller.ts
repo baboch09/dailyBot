@@ -1,54 +1,70 @@
 import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
 import { getPayment, validateWebhookSignature } from '../utils/yookassa'
-
-// Проверяем наличие обязательных переменных окружения
-const SHOP_ID = process.env.YUKASSA_SHOP_ID
-const SECRET_KEY = process.env.YUKASSA_SECRET_KEY
-
-if (!SHOP_ID || !SECRET_KEY) {
-  console.error('❌ YUKASSA_SHOP_ID or YUKASSA_SECRET_KEY is not set')
-  // В serverless функциях это не остановит выполнение, но логируем ошибку
-}
+import { config } from '../config'
 
 /**
  * Webhook от ЮКассы для уведомлений о статусе платежа
- * Документация: https://yookassa.ru/developers/payments/payment-notifications
+ * Документация: https://yookassa.ru/developers/using-api/webhooks
+ * 
+ * Важно: ЮКасса требует быстрого ответа (200 OK в течение 10 секунд)
+ * Поэтому обработку делаем асинхронно после отправки ответа
  */
 export async function webhook(req: Request, res: Response) {
   try {
-    // ЮКасса требует быстрого ответа (200 OK)
-    // Обработку платежа лучше делать асинхронно
+    // Сначала отвечаем ЮКассе, что получили webhook
     res.status(200).json({ received: true })
 
     const event = req.body
     const signature = req.headers['x-yookassa-signature'] as string
 
-    console.log('📦 YooKassa webhook received:', event.type, event.object?.id)
+    console.log('📦 YooKassa webhook received:', {
+      type: event.type,
+      paymentId: event.object?.id,
+      status: event.object?.status,
+      mode: config.yookassa.isTestMode ? 'test' : 'production'
+    })
 
-    // Валидация подписи
-    // В тестовом режиме пропускаем проверку, в продакшене обязательно проверяем
-    const isTestMode = process.env.YUKASSA_TEST_MODE === 'true'
-    if (!isTestMode && signature) {
-      if (!validateWebhookSignature(event, signature)) {
-        console.error('❌ Invalid webhook signature')
-        // Логируем, но не возвращаем ошибку, так как уже ответили 200
+    // Валидация подписи webhook
+    if (!config.yookassa.isTestMode) {
+      // В продакшене обязательна проверка подписи
+      if (!signature) {
+        console.error('❌ Webhook signature is missing in production mode')
         return
       }
-    } else if (!isTestMode && !signature) {
-      console.error('❌ Missing webhook signature in production mode')
-      return
+
+      const eventType = event.type
+      const objectId = event.object?.id
+      const objectStatus = event.object?.status
+
+      if (!eventType || !objectId || !objectStatus) {
+        console.error('❌ Invalid webhook data structure')
+        return
+      }
+
+      const isValid = validateWebhookSignature(
+        eventType,
+        objectId,
+        objectStatus,
+        signature,
+        config.yookassa.secretKey
+      )
+
+      if (!isValid) {
+        console.error('❌ Invalid webhook signature - possible attack or misconfiguration')
+        return
+      }
     }
 
     // Обрабатываем только события платежей
     if (event.type !== 'payment.succeeded' && event.type !== 'payment.canceled') {
-      console.log('Ignoring event type:', event.type)
+      console.log('ℹ️  Ignoring event type:', event.type)
       return
     }
 
     const payment = event.object
     if (!payment || !payment.id) {
-      console.error('Invalid payment data in webhook')
+      console.error('❌ Invalid payment data in webhook')
       return
     }
 
@@ -59,21 +75,22 @@ export async function webhook(req: Request, res: Response) {
     })
 
     if (!dbPayment) {
-      console.error('Payment not found in DB:', payment.id)
+      console.error('❌ Payment not found in DB:', payment.id)
       return
     }
 
-    // Получаем актуальный статус из ЮКассы (для надежности)
-    if (!SHOP_ID || !SECRET_KEY) {
-      console.error('❌ YooKassa credentials not configured')
-      return
-    }
-    
-    // После проверки TypeScript знает, что они не undefined
-    const shopId = SHOP_ID
-    const secretKey = SECRET_KEY
-    
-    const latestPayment = await getPayment(shopId, secretKey, payment.id)
+    // Получаем актуальный статус из API ЮКассы (для надежности)
+    const latestPayment = await getPayment(
+      config.yookassa.shopId,
+      config.yookassa.secretKey,
+      payment.id
+    )
+
+    console.log('🔄 Updating payment status:', {
+      paymentId: payment.id,
+      oldStatus: dbPayment.status,
+      newStatus: latestPayment.status
+    })
 
     // Обновляем статус платежа
     await prisma.payment.update({
@@ -87,50 +104,87 @@ export async function webhook(req: Request, res: Response) {
 
     // Если платеж успешен - активируем подписку
     if (latestPayment.status === 'succeeded' && dbPayment.status !== 'succeeded') {
-      const metadata = dbPayment.metadata ? JSON.parse(dbPayment.metadata) : {}
-      const planId = metadata.planId
-
-      if (planId) {
-        const SUBSCRIPTION_PLANS: Record<string, { durationDays: number }> = {
-          month: { durationDays: 30 },
-          year: { durationDays: 365 }
-        }
-
-        const plan = SUBSCRIPTION_PLANS[planId]
-        if (plan) {
-          const user = dbPayment.user
-          const now = new Date()
-          const expiresAt = new Date(now)
-          expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
-
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              subscriptionType: 'premium',
-              subscriptionStatus: 'active',
-              subscriptionStartedAt: user.subscriptionStartedAt || now,
-              subscriptionExpiresAt: expiresAt
-            }
-          })
-
-          console.log(`✅ Subscription activated for user ${user.id}, expires at ${expiresAt}`)
-        }
-      }
+      await activateSubscription(dbPayment)
     }
 
-    console.log(`✅ Payment ${payment.id} status updated to ${latestPayment.status}`)
+    console.log(`✅ Payment ${payment.id} processed successfully`)
   } catch (error: any) {
     console.error('❌ Error processing webhook:', error)
-    // Сохраняем ошибку для последующего анализа
-    // В будущем можно добавить сохранение в БД или систему мониторинга
-    if (process.env.NODE_ENV === 'production') {
-      // В продакшене можно отправлять в Sentry или другую систему мониторинга
-      console.error('Webhook error details:', {
-        error: error.message,
-        stack: error.stack,
-        body: req.body
-      })
+    
+    // Логируем детали ошибки для отладки
+    console.error('Webhook error details:', {
+      error: error.message,
+      stack: error.stack,
+      paymentId: req.body?.object?.id,
+      eventType: req.body?.type
+    })
+    
+    // В продакшене можно отправлять в систему мониторинга (Sentry, etc.)
+    if (config.nodeEnv === 'production') {
+      // TODO: Добавить интеграцию с Sentry или другой системой мониторинга
+      // Sentry.captureException(error, { extra: { webhook: req.body } })
     }
-    // Не возвращаем ошибку, чтобы ЮКасса не пыталась повторно
+    
+    // Не возвращаем ошибку, так как уже ответили 200
+    // ЮКасса не будет повторять запрос
   }
+}
+
+/**
+ * Активация подписки после успешного платежа
+ */
+async function activateSubscription(dbPayment: any) {
+  const metadata = dbPayment.metadata ? JSON.parse(dbPayment.metadata) : {}
+  const planId = metadata.planId
+
+  if (!planId) {
+    console.error('❌ Plan ID not found in payment metadata')
+    return
+  }
+
+  const SUBSCRIPTION_PLANS: Record<string, { durationDays: number }> = {
+    month: { durationDays: 30 },
+    year: { durationDays: 365 }
+  }
+
+  const plan = SUBSCRIPTION_PLANS[planId]
+  if (!plan) {
+    console.error('❌ Unknown plan:', planId)
+    return
+  }
+
+  const user = dbPayment.user
+  const now = new Date()
+  
+  // Если у пользователя уже есть активная подписка, продлеваем её
+  let expiresAt: Date
+  if (
+    user.subscriptionStatus === 'active' &&
+    user.subscriptionExpiresAt &&
+    new Date(user.subscriptionExpiresAt) > now
+  ) {
+    // Продлеваем с текущей даты окончания
+    expiresAt = new Date(user.subscriptionExpiresAt)
+    expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
+    console.log('🔄 Extending existing subscription')
+  } else {
+    // Новая подписка - начинаем с текущей даты
+    expiresAt = new Date(now)
+    expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
+    console.log('🆕 Activating new subscription')
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      subscriptionType: 'premium',
+      subscriptionStatus: 'active',
+      subscriptionStartedAt: user.subscriptionStartedAt || now,
+      subscriptionExpiresAt: expiresAt
+    }
+  })
+
+  console.log(`✅ Subscription activated for user ${user.id}`)
+  console.log(`   Plan: ${planId}`)
+  console.log(`   Expires at: ${expiresAt.toISOString()}`)
 }
