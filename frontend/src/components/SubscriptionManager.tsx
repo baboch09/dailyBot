@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import SubscriptionStatus from './SubscriptionStatus'
 import SubscriptionPlans from './SubscriptionPlans'
 import { subscriptionApi } from '../services/api'
-import { getWebApp } from '../utils/telegram'
 import type { SubscriptionStatus as SubscriptionStatusType } from '../types'
 
 interface SubscriptionManagerProps {
