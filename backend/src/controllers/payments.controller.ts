@@ -24,15 +24,20 @@ export async function webhook(req: Request, res: Response) {
       paymentId: event.object?.id,
       status: event.object?.status,
       mode: config.yookassa.isTestMode ? 'test' : 'production',
-      hasSignature: !!signature
+      hasSignature: !!signature,
+      timestamp: new Date().toISOString()
     })
 
-    // Валидация подписи webhook (только предупреждение, не блокируем)
+    // Валидация подписи webhook
     if (!config.yookassa.isTestMode) {
       if (!signature) {
-        console.warn('⚠️  Webhook signature is missing in production mode')
-        console.warn('   This is not secure, but processing anyway')
-        console.warn('   Check YooKassa dashboard: Settings → HTTP notifications → Signature')
+        console.warn('⚠️  ========================================')
+        console.warn('⚠️  SECURITY WARNING: Webhook signature missing!')
+        console.warn('⚠️  ========================================')
+        console.warn('⚠️  Processing anyway to avoid payment loss')
+        console.warn('⚠️  URGENT: Enable signature in YooKassa dashboard')
+        console.warn('⚠️  Settings → HTTP notifications → Enable signature')
+        console.warn('⚠️  ========================================')
       } else {
         const eventType = event.type || event.event
         const objectId = event.object?.id
@@ -47,9 +52,14 @@ export async function webhook(req: Request, res: Response) {
             config.yookassa.secretKey
           )
 
-          if (!isValid) {
-            console.error('❌ Invalid webhook signature - possible attack or misconfiguration')
-            console.error('   But processing anyway to avoid losing payments')
+          if (isValid) {
+            console.log('✅ Webhook signature validated')
+          } else {
+            console.error('❌ ========================================')
+            console.error('❌ INVALID WEBHOOK SIGNATURE!')
+            console.error('❌ This could be an attack or misconfiguration')
+            console.error('❌ Processing anyway to avoid payment loss')
+            console.error('❌ ========================================')
           }
         }
       }
@@ -102,31 +112,47 @@ export async function webhook(req: Request, res: Response) {
       return
     }
 
+    // ВАЖНО: Проверяем, не обработан ли уже этот платеж
+    if (dbPayment.status === 'succeeded' && isPaymentSucceeded) {
+      console.log('ℹ️  Payment already succeeded, skipping duplicate webhook')
+      return
+    }
+
     // Получаем актуальный статус из API ЮКассы (для надежности)
+    console.log('🔍 Fetching latest payment status from YooKassa API...')
     const latestPayment = await getPayment(
       config.yookassa.shopId,
       config.yookassa.secretKey,
       payment.id
     )
 
-    console.log('🔄 Updating payment status:', {
+    console.log('🔄 Payment status update:', {
       paymentId: payment.id,
-      oldStatus: dbPayment.status,
-      newStatus: latestPayment.status
+      dbStatus: dbPayment.status,
+      webhookStatus: payment.status,
+      apiStatus: latestPayment.status
     })
 
-    // Обновляем статус платежа
-    await prisma.payment.update({
-      where: { id: dbPayment.id },
-      data: {
-        status: latestPayment.status,
-        paymentMethod: latestPayment.metadata?.payment_method || null,
-        updatedAt: new Date()
-      }
-    })
+    // Обновляем статус платежа ТОЛЬКО если он изменился
+    if (dbPayment.status !== latestPayment.status) {
+      await prisma.payment.update({
+        where: { id: dbPayment.id },
+        data: {
+          status: latestPayment.status,
+          paymentMethod: latestPayment.metadata?.payment_method || null,
+          updatedAt: new Date()
+        }
+      })
+      console.log(`✅ Payment status updated: ${dbPayment.status} → ${latestPayment.status}`)
+    } else {
+      console.log('ℹ️  Payment status unchanged, no update needed')
+    }
 
-    // Если платеж успешен - активируем подписку
+    // КРИТИЧНО: Активируем подписку ТОЛЬКО если:
+    // 1. Новый статус = succeeded
+    // 2. Старый статус != succeeded (избегаем повторной активации)
     if (latestPayment.status === 'succeeded' && dbPayment.status !== 'succeeded') {
+      console.log('💎 Payment succeeded! Activating subscription...')
       await activateSubscription(dbPayment)
     }
 

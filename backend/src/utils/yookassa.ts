@@ -44,7 +44,8 @@ export async function createPayment(
   amount: number,
   description: string,
   returnUrl: string,
-  metadata?: Record<string, string>
+  metadata?: Record<string, string>,
+  idempotenceKey?: string
 ): Promise<PaymentResponse> {
   const apiUrl = config.yookassa.apiUrl
   
@@ -64,11 +65,15 @@ export async function createPayment(
 
   const auth = Buffer.from(`${shopId}:${secretKey}`).toString('base64')
 
+  // Используем переданный idempotence ключ или генерируем случайный
+  // ВАЖНО: для предотвращения дублей ключ должен быть стабильным (userId+planId)
+  const finalIdempotenceKey = idempotenceKey || `${Date.now()}-${Math.random()}`
+
   const response = await fetch(`${apiUrl}/payments`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Idempotence-Key': `${Date.now()}-${Math.random()}`, // Уникальный ключ для идемпотентности
+      'Idempotence-Key': finalIdempotenceKey,
       'Authorization': `Basic ${auth}`
     },
     body: JSON.stringify(paymentData)

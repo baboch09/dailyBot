@@ -147,53 +147,59 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       return res.status(400).json({ error: 'Invalid plan ID' })
     }
 
-    // Проверяем, нет ли уже активного платежа в ожидании
-    const pendingPayment = await prisma.payment.findFirst({
+    // КРИТИЧНО: Проверяем pending платежи за последние 30 минут
+    const recentPendingPayment = await prisma.payment.findFirst({
       where: {
         userId: user.id,
-        status: 'pending'
+        status: 'pending',
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 60 * 1000) // Последние 30 минут
+        }
       },
       orderBy: { createdAt: 'desc' }
     })
 
-    if (pendingPayment) {
-      // Проверяем статус существующего платежа в ЮКассе
-      if (pendingPayment.yookassaId) {
-        try {
-          const yookassaPayment = await getPayment(
-            config.yookassa.shopId,
-            config.yookassa.secretKey,
-            pendingPayment.yookassaId
-          )
-          
-          // Обновляем статус в БД
-          await prisma.payment.update({
-            where: { id: pendingPayment.id },
-            data: { status: yookassaPayment.status }
-          })
-
-          // Если платеж успешен - возвращаем его
-          if (yookassaPayment.status === 'succeeded') {
-            return res.status(400).json({ 
-              error: 'You already have an active subscription',
-              message: 'У вас уже есть активная подписка'
-            })
-          }
-        } catch (error) {
-          console.error('Error checking payment status:', error)
-        }
-      }
+    if (recentPendingPayment && recentPendingPayment.yookassaId) {
+      console.log('⚠️  Found recent pending payment, checking status in YooKassa...')
       
-      // Если платеж все еще pending, возвращаем его
-      if (pendingPayment.status === 'pending') {
-        return res.json({
-          paymentId: pendingPayment.id,
-          yookassaId: pendingPayment.yookassaId || '',
-          amount: pendingPayment.amount,
-          confirmationUrl: '', // Нужно будет получить заново
-          status: pendingPayment.status,
-          message: 'У вас уже есть платеж в обработке'
+      try {
+        // Проверяем актуальный статус в YooKassa
+        const yookassaPayment = await getPayment(
+          config.yookassa.shopId,
+          config.yookassa.secretKey,
+          recentPendingPayment.yookassaId
+        )
+        
+        console.log(`   YooKassa status: ${yookassaPayment.status}`)
+        
+        // Обновляем статус в БД
+        await prisma.payment.update({
+          where: { id: recentPendingPayment.id },
+          data: { status: yookassaPayment.status }
         })
+
+        // Если платеж успешен - не создаем новый
+        if (yookassaPayment.status === 'succeeded') {
+          console.log('✅ Payment already succeeded, not creating duplicate')
+          return res.status(400).json({ 
+            error: 'Payment already completed',
+            message: 'Платеж уже обработан. Обновите страницу.'
+          })
+        }
+        
+        // Если все еще pending - возвращаем существующий
+        if (yookassaPayment.status === 'pending') {
+          console.log('⏳ Payment still pending, returning existing payment')
+          return res.status(409).json({
+            error: 'Payment already in progress',
+            message: 'У вас уже есть платеж в обработке. Завершите его или подождите.',
+            paymentId: recentPendingPayment.id,
+            existingPayment: true
+          })
+        }
+      } catch (error) {
+        console.error('❌ Error checking payment status:', error)
+        // Продолжаем создание нового платежа если проверка не удалась
       }
     }
 
@@ -204,6 +210,14 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
     // После возврата frontend автоматически проверит статус платежа
     const webAppUrl = config.webAppUrl
     const returnUrl = `${webAppUrl}?from=payment`
+
+    // КРИТИЧНО: Генерируем стабильный idempotence ключ
+    // Это предотвращает создание дублей при повторных запросах
+    // Формат: userId-planId-округленное_время (до 5 минут)
+    const timeWindow = Math.floor(Date.now() / (5 * 60 * 1000)) // Окно 5 минут
+    const idempotenceKey = `${user.id}-${planId}-${timeWindow}`
+    
+    console.log('💳 Creating payment with idempotence key:', idempotenceKey)
 
     // Создаем платеж в ЮКассе
     const payment = await createPayment(
@@ -216,7 +230,8 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
         userId: user.id,
         planId: planId,
         telegramId: user.telegramId.toString()
-      }
+      },
+      idempotenceKey
     )
 
     // Сохраняем платеж в БД
@@ -236,47 +251,10 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       }
     })
 
-    // ВАЖНО: setTimeout в serverless функциях может не выполниться, если функция завершится раньше
-    // В продакшене лучше использовать очередь задач (Vercel Queue, Bull и т.д.) или полагаться на webhook
-    // Пока оставляем для локальной разработки, но в продакшене это не сработает надежно
-    // Webhook от ЮКассы обработает обновление статуса платежа
-    if (config.nodeEnv !== 'production' || process.env.ENABLE_PAYMENT_POLLING === 'true') {
-      // Только для локальной разработки или если явно включено
-      setTimeout(async () => {
-        try {
-          const latestPayment = await getPayment(
-            config.yookassa.shopId,
-            config.yookassa.secretKey,
-            payment.id
-          )
-          if (latestPayment.status !== dbPayment.status) {
-            await prisma.payment.update({
-              where: { id: dbPayment.id },
-              data: { status: latestPayment.status }
-            })
-            
-            // Если платеж успешен - активируем подписку
-            if (latestPayment.status === 'succeeded') {
-              const now = new Date()
-              const expiresAt = new Date(now)
-              expiresAt.setDate(expiresAt.getDate() + plan.durationDays)
-              
-              await prisma.user.update({
-                where: { id: user.id },
-                data: {
-                  subscriptionType: 'premium',
-                  subscriptionStatus: 'active',
-                  subscriptionStartedAt: user.subscriptionStartedAt || now,
-                  subscriptionExpiresAt: expiresAt
-                }
-              })
-            }
-          }
-        } catch (error) {
-          console.error('Error checking payment status after creation:', error)
-        }
-      }, 5000) // Проверяем через 5 секунд
-    }
+    // УБРАНО: polling через setTimeout не работает в serverless (Vercel)
+    // Активация подписки происходит только через webhook от YooKassa
+    console.log('💡 Payment created. Waiting for webhook from YooKassa to activate subscription.')
+    console.log('   Webhook URL should be: https://your-domain.com/api/payments/webhook')
 
     res.json({
       paymentId: dbPayment.id,
