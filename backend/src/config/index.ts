@@ -38,8 +38,7 @@ interface AppConfig {
 function validateEnv(): void {
   const required = [
     'YUKASSA_SHOP_ID',
-    'YUKASSA_SECRET_KEY',
-    'DATABASE_URL'
+    'YUKASSA_SECRET_KEY'
   ]
 
   const missing = required.filter(key => !process.env[key])
@@ -49,6 +48,11 @@ function validateEnv(): void {
       `Missing required environment variables: ${missing.join(', ')}\n` +
       `Please check your .env file or environment configuration.`
     )
+  }
+
+  // DATABASE_URL - предупреждение, но не критично (для serverless может быть POSTGRES_PRISMA_URL)
+  if (!process.env.DATABASE_URL && !process.env.POSTGRES_PRISMA_URL) {
+    console.warn('⚠️  WARNING: DATABASE_URL is not set. Database operations may fail.')
   }
 
   // Валидация формата переменных
@@ -112,7 +116,7 @@ function loadConfig(): AppConfig {
     allowedOrigins: process.env.ALLOWED_ORIGINS?.split(',').map(o => o.trim()),
 
     // Database
-    databaseUrl: process.env.DATABASE_URL!,
+    databaseUrl: process.env.DATABASE_URL || process.env.POSTGRES_PRISMA_URL || '',
 
     // YooKassa
     yookassa: {
