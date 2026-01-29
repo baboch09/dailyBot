@@ -60,21 +60,11 @@
   </div>
 
   <script>
-    console.log('Payment return page loaded');
-
-    const params = new URLSearchParams(location.search);
-    const botUsername = params.get('bot') || 'daily_go_bot';
-
-    // Помечаем возврат для проверки в Mini App
+    const bot = new URLSearchParams(location.search).get('bot') || 'daily_go_bot';
+    
     localStorage.setItem('payment_return_time', Date.now().toString());
-
-    // Всегда редиректим через Telegram deep link
-    // Это единственный надёжный способ вернуться в Mini App
-    setTimeout(() => {
-      const link = `https://t.me/${botUsername}?startapp=payment_return`;
-      console.log('Redirecting to Telegram:', link);
-      location.href = link;
-    }, 800);
+    
+    location.replace(`https://t.me/${bot}?startapp=payment_return`);
   </script>
 </body>
 </html>

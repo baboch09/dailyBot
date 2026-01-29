@@ -111,10 +111,16 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
     // Сохраняем метку, что платеж инициирован (localStorage для сохранения между сессиями)
     localStorage.setItem('payment_initiated', Date.now().toString())
     
-    // Открываем страницу оплаты в текущем окне Telegram WebView
-    // После оплаты пользователь вернется в бот через deep link
+    // Открываем страницу оплаты
     console.log('💳 Opening payment page...')
-    window.location.href = confirmationUrl
+    
+    if (window.Telegram?.WebApp) {
+      // В Telegram Mini App используем openLink (откроет во внешнем браузере)
+      Telegram.WebApp.openLink(confirmationUrl)
+    } else {
+      // Fallback для веб-версии
+      window.location.href = confirmationUrl
+    }
   }
 
   const togglePlans = () => {
