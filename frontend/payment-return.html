@@ -65,37 +65,16 @@
     const params = new URLSearchParams(location.search);
     const botUsername = params.get('bot') || 'daily_go_bot';
 
-    // Помечаем возврат
+    // Помечаем возврат для проверки в Mini App
     localStorage.setItem('payment_return_time', Date.now().toString());
 
-    function isInTelegram() {
-      return !!window.Telegram?.WebApp;
-    }
-
-    function redirect() {
-      if (isInTelegram()) {
-        console.log('✅ Telegram WebView detected');
-
-        // Сообщаем Telegram, что всё ок
-        Telegram.WebApp.ready();
-
-        // Пробуем закрыть WebView (лучший UX)
-        Telegram.WebApp.close();
-
-        // Фолбэк, если close не сработал
-        setTimeout(() => {
-          location.href = location.origin + '/?payment_return=true';
-        }, 300);
-
-      } else {
-        console.log('⚠️ External browser detected');
-
-        const link = `https://t.me/${botUsername}?startapp=payment_return`;
-        location.href = link;
-      }
-    }
-
-    setTimeout(redirect, 800);
+    // Всегда редиректим через Telegram deep link
+    // Это единственный надёжный способ вернуться в Mini App
+    setTimeout(() => {
+      const link = `https://t.me/${botUsername}?startapp=payment_return`;
+      console.log('Redirecting to Telegram:', link);
+      location.href = link;
+    }, 800);
   </script>
 </body>
 </html>
