@@ -61,40 +61,41 @@
 
   <script>
     console.log('Payment return page loaded');
-    console.log('User agent:', navigator.userAgent);
-    console.log('Telegram WebApp available:', !!(window.Telegram && window.Telegram.WebApp));
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const botUsername = urlParams.get('bot') || 'daily_go_bot';
+    const params = new URLSearchParams(location.search);
+    const botUsername = params.get('bot') || 'daily_go_bot';
 
-    // Показываем сообщение
-    document.querySelector('h1').textContent = 'Платеж обработан!';
-    document.querySelector('p').textContent = 'Возвращаемся в приложение...';
-    document.querySelector('.spinner').style.display = 'none';
-
-    // Помечаем возврат из оплаты
+    // Помечаем возврат
     localStorage.setItem('payment_return_time', Date.now().toString());
 
-    setTimeout(function() {
-      const isTelegramWebView = window.Telegram && 
-                                 window.Telegram.WebApp && 
-                                 window.Telegram.WebApp.initData;
+    function isInTelegram() {
+      return !!window.Telegram?.WebApp;
+    }
 
-      if (isTelegramWebView) {
-        // Вариант 1: Если открыто в Telegram WebView
-        console.log('✅ In Telegram WebView, redirecting to Mini App root');
-        window.location.href = window.location.origin + '/?payment_return=true';
+    function redirect() {
+      if (isInTelegram()) {
+        console.log('✅ Telegram WebView detected');
+
+        // Сообщаем Telegram, что всё ок
+        Telegram.WebApp.ready();
+
+        // Пробуем закрыть WebView (лучший UX)
+        Telegram.WebApp.close();
+
+        // Фолбэк, если close не сработал
+        setTimeout(() => {
+          location.href = location.origin + '/?payment_return=true';
+        }, 300);
+
       } else {
-        // Вариант 2: Если в обычном браузере
-        console.log('⚠️ Not in Telegram WebView, using deep link');
-        
-        // Пробуем определить, есть ли Web App short name
-        // Если есть - используйте: https://t.me/bot/app?startapp=payment_return
-        // Если нет - используем обычный deep link (откроет чат)
-        const deepLink = 'https://t.me/' + botUsername + '?startapp=payment_return';
-        window.location.href = deepLink;
+        console.log('⚠️ External browser detected');
+
+        const link = `https://t.me/${botUsername}?startapp=payment_return`;
+        location.href = link;
       }
-    }, 1000);
+    }
+
+    setTimeout(redirect, 800);
   </script>
 </body>
 </html>
