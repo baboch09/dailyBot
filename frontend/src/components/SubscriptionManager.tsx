@@ -16,8 +16,21 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
   useEffect(() => {
     loadStatus()
     
+    // Проверяем startapp параметр (если пришли из Telegram deep link)
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
+    if (startParam === 'payment_return') {
+      console.log('🔗 Returned from payment via startapp parameter')
+      // Помечаем что нужно проверить платеж
+      localStorage.setItem('check_payment_on_return', 'true')
+    }
+    
     // Проверяем, вернулся ли пользователь после оплаты
-    checkReturnFromPayment()
+    if (localStorage.getItem('check_payment_on_return') === 'true') {
+      localStorage.removeItem('check_payment_on_return')
+      checkReturnFromPayment()
+    } else {
+      checkReturnFromPayment()
+    }
   }, [])
 
   const checkReturnFromPayment = async () => {

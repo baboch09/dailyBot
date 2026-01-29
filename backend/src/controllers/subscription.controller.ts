@@ -205,21 +205,17 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // ВАРИАНТ 1: Прямая ссылка на бота (никогда не откроется Vercel)
+    // Используем startapp параметр для передачи информации о возврате из оплаты
     const botUsername = config.telegram.botUsername
     
     if (!botUsername) {
       throw new Error('TELEGRAM_BOT_USERNAME не установлен. Установите в переменных окружения.')
     }
     
-    const returnUrl = `https://t.me/${botUsername}`
+    const returnUrl = `https://t.me/${botUsername}?startapp=payment_return`
 
     console.log('💳 Payment return URL:', returnUrl)
     console.log('   Bot username:', botUsername)
-    
-    // ВАРИАНТ 2: Через payment-return.html (если нужна проверка контекста)
-    // const webAppUrl = config.webAppUrl
-    // const returnUrl = `${webAppUrl}/payment-return.html?bot=${encodeURIComponent(botUsername)}`
 
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах
