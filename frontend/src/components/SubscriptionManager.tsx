@@ -116,7 +116,7 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
     
     if (window.Telegram?.WebApp) {
       // В Telegram Mini App используем openLink (откроет во внешнем браузере)
-      Telegram.WebApp.openLink(confirmationUrl)
+      window.Telegram.WebApp.openLink(confirmationUrl)
     } else {
       // Fallback для веб-версии
       window.location.href = confirmationUrl
