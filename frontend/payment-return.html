@@ -60,18 +60,26 @@
   </div>
 
   <script>
-    // Помечаем что вернулись из оплаты
-    sessionStorage.setItem('payment_return', 'true');
-    
-    console.log('Payment return page loaded, redirecting back to app...');
+    console.log('Payment return page loaded');
+    console.log('Telegram WebApp available:', !!(window.Telegram && window.Telegram.WebApp));
 
-    // Редиректим обратно в корень приложения с параметром payment_return=true
-    // Это вернет пользователя в Mini App, где App.tsx обработает возврат из оплаты
+    // Получаем имя бота из URL параметров
+    const urlParams = new URLSearchParams(window.location.search);
+    const botUsername = urlParams.get('bot') || 'daily_go_bot'; // Fallback на имя бота
+
+    // Показываем сообщение пользователю
+    document.querySelector('h1').textContent = 'Платеж обработан!';
+    document.querySelector('p').textContent = 'Возвращайтесь в бота для проверки статуса';
+    document.querySelector('.spinner').style.display = 'none';
+
+    // Через 2 секунды пытаемся вернуть пользователя в бот
     setTimeout(function() {
-      const appUrl = window.location.origin + '/?payment_return=true';
-      console.log('Redirecting to:', appUrl);
-      window.location.href = appUrl;
-    }, 1000);
+      // ВСЕГДА используем deep link для возврата в бот
+      // Это работает и из Telegram WebView, и из обычного браузера
+      const telegramDeepLink = 'https://t.me/' + botUsername + '?startapp=payment_return';
+      console.log('Opening Telegram bot:', telegramDeepLink);
+      window.location.href = telegramDeepLink;
+    }, 2000);
   </script>
 </body>
 </html>
