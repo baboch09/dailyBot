@@ -214,6 +214,9 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       ? `${returnUrlBase}?bot=${encodeURIComponent(botUsername)}`
       : returnUrlBase
 
+    console.log('💳 Payment return URL:', returnUrl)
+    console.log('   Bot username:', botUsername || 'NOT SET')
+
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах
     // Формат: userId-planId-округленное_время (до 5 минут)
