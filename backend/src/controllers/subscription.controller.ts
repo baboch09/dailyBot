@@ -208,7 +208,11 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
     // Для Telegram Mini App используем специальную страницу возврата
     // Эта страница автоматически закроется или вернет пользователя в Mini App
     const webAppUrl = config.webAppUrl
-    const returnUrl = `${webAppUrl}/payment-return.html`
+    const botUsername = config.telegram.botUsername
+    const returnUrlBase = `${webAppUrl}/payment-return.html`
+    const returnUrl = botUsername
+      ? `${returnUrlBase}?bot=${encodeURIComponent(botUsername)}`
+      : returnUrlBase
 
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах

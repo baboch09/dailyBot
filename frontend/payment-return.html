@@ -62,7 +62,20 @@
   <script>
     // Помечаем что вернулись из оплаты
     sessionStorage.setItem('payment_return', 'true');
-    
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const botUsername = urlParams.get('bot') || urlParams.get('bot_username') || urlParams.get('tg_bot');
+    const startAppPayload = urlParams.get('startapp') || 'payment_return';
+    const telegramDeepLink = botUsername
+      ? `https://t.me/${botUsername}?startapp=${encodeURIComponent(startAppPayload)}`
+      : null;
+
+    const redirectToApp = function() {
+      // Fallback: редирект на главную страницу Mini App (если открыто как сайт)
+      const appUrl = window.location.origin + '/?payment_return=true';
+      window.location.href = appUrl;
+    };
+
     // Пробуем закрыть через Telegram WebApp API
     if (window.Telegram && window.Telegram.WebApp) {
       // Через небольшую задержку закрываем браузер и возвращаемся в Mini App
@@ -73,16 +86,18 @@
         } catch (e) {
           console.log('Could not close via Telegram API:', e);
         }
-        
-        // Fallback: редирект на главную страницу Mini App
-        const appUrl = window.location.origin + '/?payment_return=true';
-        window.location.href = appUrl;
+
+        // В Telegram закрытие обычно возвращает в чат.
+        // Если по какой-то причине не закрылось, оставляем пользователя на странице.
       }, 1500);
     } else {
-      // Если Telegram API недоступен, редиректим на главную
+      // Если Telegram API недоступен, редиректим в Telegram по deep link, если есть
       setTimeout(function() {
-        const appUrl = window.location.origin + '/?payment_return=true';
-        window.location.href = appUrl;
+        if (telegramDeepLink) {
+          window.location.href = telegramDeepLink;
+          return;
+        }
+        redirectToApp();
       }, 1500);
     }
   </script>

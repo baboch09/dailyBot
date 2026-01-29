@@ -26,6 +26,7 @@ interface AppConfig {
   telegram: {
     botToken?: string
     webAppUrl?: string
+    botUsername?: string
   }
 
   // URLs
@@ -130,7 +131,8 @@ function loadConfig(): AppConfig {
     // Telegram
     telegram: {
       botToken: process.env.TELEGRAM_BOT_TOKEN,
-      webAppUrl: process.env.TELEGRAM_WEBAPP_URL || process.env.WEBAPP_URL
+      webAppUrl: process.env.TELEGRAM_WEBAPP_URL || process.env.WEBAPP_URL,
+      botUsername: process.env.TELEGRAM_BOT_USERNAME || process.env.BOT_USERNAME
     },
 
     // URLs
