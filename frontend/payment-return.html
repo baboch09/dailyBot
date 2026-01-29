@@ -62,38 +62,16 @@
   <script>
     // Помечаем что вернулись из оплаты
     sessionStorage.setItem('payment_return', 'true');
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const botUsername = urlParams.get('bot') || urlParams.get('bot_username') || urlParams.get('tg_bot');
-    const startAppPayload = urlParams.get('startapp') || 'payment_return';
     
-    console.log('Payment return page loaded');
-    console.log('Bot username:', botUsername);
-    console.log('Telegram WebApp available:', !!(window.Telegram && window.Telegram.WebApp));
+    console.log('Payment return page loaded, redirecting back to app...');
 
-    // КРИТИЧНО: Всегда используем deep link для возврата в бот
-    // WebApp.close() не работает из встроенного браузера платёжной системы
+    // Редиректим обратно в корень приложения с параметром payment_return=true
+    // Это вернет пользователя в Mini App, где App.tsx обработает возврат из оплаты
     setTimeout(function() {
-      if (botUsername) {
-        // Открываем бота через deep link - это работает из любого браузера
-        const telegramDeepLink = `https://t.me/${botUsername}?startapp=${encodeURIComponent(startAppPayload)}`;
-        console.log('Redirecting to:', telegramDeepLink);
-        window.location.href = telegramDeepLink;
-      } else {
-        // Fallback: если нет имени бота, пробуем закрыть или вернуться на webapp
-        console.log('No bot username, trying to close or redirect to webapp');
-        if (window.Telegram && window.Telegram.WebApp) {
-          try {
-            window.Telegram.WebApp.close();
-          } catch (e) {
-            console.log('Could not close via Telegram API:', e);
-          }
-        }
-        // Если не закрылось - редирект на главную
-        const appUrl = window.location.origin + '/?payment_return=true';
-        window.location.href = appUrl;
-      }
-    }, 1500);
+      const appUrl = window.location.origin + '/?payment_return=true';
+      console.log('Redirecting to:', appUrl);
+      window.location.href = appUrl;
+    }, 1000);
   </script>
 </body>
 </html>
