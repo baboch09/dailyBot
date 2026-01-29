@@ -205,19 +205,21 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // Для возврата в Mini App используем промежуточную страницу
-    // Она определит контекст и вернет пользователя правильно
-    const webAppUrl = config.webAppUrl
+    // ВАРИАНТ 1: Прямая ссылка на бота (никогда не откроется Vercel)
     const botUsername = config.telegram.botUsername
     
     if (!botUsername) {
       throw new Error('TELEGRAM_BOT_USERNAME не установлен. Установите в переменных окружения.')
     }
     
-    const returnUrl = `${webAppUrl}/payment-return.html?bot=${encodeURIComponent(botUsername)}`
+    const returnUrl = `https://t.me/${botUsername}`
 
     console.log('💳 Payment return URL:', returnUrl)
     console.log('   Bot username:', botUsername)
+    
+    // ВАРИАНТ 2: Через payment-return.html (если нужна проверка контекста)
+    // const webAppUrl = config.webAppUrl
+    // const returnUrl = `${webAppUrl}/payment-return.html?bot=${encodeURIComponent(botUsername)}`
 
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах
