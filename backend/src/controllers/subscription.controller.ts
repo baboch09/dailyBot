@@ -205,17 +205,23 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // Используем startapp параметр для передачи информации о возврате из оплаты
     const botUsername = config.telegram.botUsername
+    const webAppUrl = config.webAppUrl
     
     if (!botUsername) {
       throw new Error('TELEGRAM_BOT_USERNAME не установлен. Установите в переменных окружения.')
     }
     
-    const returnUrl = `https://t.me/${botUsername}?startapp=payment_return`
+    // ВАРИАНТ 1: Если у вас есть Web App short name в BotFather
+    // const webAppShortName = 'app' // Замените на ваш short name
+    // const returnUrl = `https://t.me/${botUsername}/${webAppShortName}?startapp=payment_return`
+    
+    // ВАРИАНТ 2: Через промежуточную страницу (работает всегда)
+    const returnUrl = `${webAppUrl}/payment-return.html?bot=${encodeURIComponent(botUsername)}`
 
     console.log('💳 Payment return URL:', returnUrl)
     console.log('   Bot username:', botUsername)
+    console.log('   WebApp URL:', webAppUrl)
 
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах

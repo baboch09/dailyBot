@@ -16,21 +16,33 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
   useEffect(() => {
     loadStatus()
     
-    // Проверяем startapp параметр (если пришли из Telegram deep link)
+    // Проверяем различные способы возврата из оплаты:
+    
+    // 1. Через URL параметр (из payment-return.html)
+    const urlParams = new URLSearchParams(window.location.search)
+    const paymentReturn = urlParams.get('payment_return')
+    
+    // 2. Через startapp параметр (из Telegram deep link)
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param
-    if (startParam === 'payment_return') {
-      console.log('🔗 Returned from payment via startapp parameter')
-      // Помечаем что нужно проверить платеж
-      localStorage.setItem('check_payment_on_return', 'true')
+    
+    // 3. Через localStorage (из payment-return.html)
+    const paymentReturnTime = localStorage.getItem('payment_return_time')
+    const recentReturn = paymentReturnTime && 
+                         (Date.now() - parseInt(paymentReturnTime) < 60000) // В течение 1 минуты
+    
+    if (paymentReturn === 'true' || startParam === 'payment_return' || recentReturn) {
+      console.log('🔍 Detected return from payment, checking status...')
+      if (paymentReturnTime) {
+        localStorage.removeItem('payment_return_time')
+      }
+      // Убираем параметр из URL
+      if (paymentReturn) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
     }
     
-    // Проверяем, вернулся ли пользователь после оплаты
-    if (localStorage.getItem('check_payment_on_return') === 'true') {
-      localStorage.removeItem('check_payment_on_return')
-      checkReturnFromPayment()
-    } else {
-      checkReturnFromPayment()
-    }
+    // Всегда проверяем, есть ли незавершенный платеж
+    checkReturnFromPayment()
   }, [])
 
   const checkReturnFromPayment = async () => {
