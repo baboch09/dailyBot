@@ -205,17 +205,18 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // Для Telegram Mini App используем специальную страницу возврата
-    // Эта страница автоматически закроется или вернет пользователя в Mini App
-    const webAppUrl = config.webAppUrl
+    // Для Telegram используем прямой deep link на бота
+    // После оплаты пользователь вернется прямо в бота
     const botUsername = config.telegram.botUsername
-    const returnUrlBase = `${webAppUrl}/payment-return.html`
-    const returnUrl = botUsername
-      ? `${returnUrlBase}?bot=${encodeURIComponent(botUsername)}`
-      : returnUrlBase
+    
+    if (!botUsername) {
+      throw new Error('TELEGRAM_BOT_USERNAME не установлен. Установите в переменных окружения.')
+    }
+    
+    const returnUrl = `https://t.me/${botUsername}`
 
     console.log('💳 Payment return URL:', returnUrl)
-    console.log('   Bot username:', botUsername || 'NOT SET')
+    console.log('   Bot username:', botUsername)
 
     // КРИТИЧНО: Генерируем стабильный idempotence ключ
     // Это предотвращает создание дублей при повторных запросах

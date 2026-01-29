@@ -17,6 +17,25 @@ interface PaymentRequest {
     type: 'redirect'
     return_url: string
   }
+  save_payment_method?: boolean
+  receipt?: {
+    customer?: {
+      email?: string
+      phone?: string
+    }
+    items: Array<{
+      description: string
+      quantity: string
+      amount: {
+        value: string
+        currency: string
+      }
+      vat_code: number
+      payment_mode: string
+      payment_subject: string
+    }>
+    tax_system_code?: number
+  }
   metadata?: Record<string, string>
 }
 
@@ -59,6 +78,23 @@ export async function createPayment(
     confirmation: {
       type: 'redirect',
       return_url: returnUrl
+    },
+    save_payment_method: true, // Сохранение метода оплаты для будущих платежей
+    receipt: {
+      items: [
+        {
+          description: description,
+          quantity: '1',
+          amount: {
+            value: amount.toFixed(2),
+            currency: 'RUB'
+          },
+          vat_code: 1, // НДС не облагается
+          payment_mode: 'full_payment',
+          payment_subject: 'service'
+        }
+      ],
+      tax_system_code: 1 // Упрощенная система налогообложения
     },
     metadata: metadata || {}
   }
