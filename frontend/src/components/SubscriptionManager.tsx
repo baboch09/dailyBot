@@ -20,14 +20,6 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
     checkReturnFromPayment()
   }, [])
 
-  // Автоматически закрываем панель тарифов, если подписка активировалась
-  useEffect(() => {
-    if (isActive && showPlans) {
-      console.log('Subscription activated, hiding plans panel')
-      setShowPlans(false)
-    }
-  }, [isActive])
-
   const checkReturnFromPayment = async () => {
     const paymentInitiated = sessionStorage.getItem('payment_initiated')
     if (!paymentInitiated) return
@@ -108,6 +100,14 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
 
   const isActive = status?.subscriptionStatus === 'active' && (status?.daysRemaining || 0) > 0
   const subscriptionLevel = isActive ? 'Premium' : 'Free'
+
+  // Автоматически закрываем панель тарифов, если подписка активировалась
+  useEffect(() => {
+    if (isActive && showPlans) {
+      console.log('Subscription activated, hiding plans panel')
+      setShowPlans(false)
+    }
+  }, [isActive])
 
   // Скелетон загрузки
   if (loading || externalLoading) {
