@@ -63,23 +63,26 @@
     console.log('Payment return page loaded');
     console.log('Telegram WebApp available:', !!(window.Telegram && window.Telegram.WebApp));
 
-    // Получаем имя бота из URL параметров
     const urlParams = new URLSearchParams(window.location.search);
-    const botUsername = urlParams.get('bot') || 'daily_go_bot'; // Fallback на имя бота
+    const botUsername = urlParams.get('bot') || 'daily_go_bot';
 
-    // Показываем сообщение пользователю
+    // Показываем сообщение
     document.querySelector('h1').textContent = 'Платеж обработан!';
-    document.querySelector('p').textContent = 'Возвращайтесь в бота для проверки статуса';
+    document.querySelector('p').textContent = 'Возвращаемся в приложение...';
     document.querySelector('.spinner').style.display = 'none';
 
-    // Через 2 секунды пытаемся вернуть пользователя в бот
     setTimeout(function() {
-      // ВСЕГДА используем deep link для возврата в бот
-      // Это работает и из Telegram WebView, и из обычного браузера
-      const telegramDeepLink = 'https://t.me/' + botUsername + '?startapp=payment_return';
-      console.log('Opening Telegram bot:', telegramDeepLink);
-      window.location.href = telegramDeepLink;
-    }, 2000);
+      // Если открыто в Telegram WebView - пробуем вернуться в Mini App
+      if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) {
+        console.log('In Telegram WebView, redirecting to Mini App root');
+        // Редирект на корень Mini App - это вернет в приложение
+        window.location.href = window.location.origin + '/?payment_return=true';
+      } else {
+        // Если в обычном браузере - открываем бота через deep link
+        console.log('Not in Telegram WebView, opening bot via deep link');
+        window.location.href = 'https://t.me/' + botUsername + '?startapp=payment_return';
+      }
+    }, 1500);
   </script>
 </body>
 </html>

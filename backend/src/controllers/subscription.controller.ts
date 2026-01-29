@@ -205,15 +205,16 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
 
     const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-    // Для Telegram используем прямой deep link на бота
-    // После оплаты пользователь вернется прямо в бота
+    // Для возврата в Mini App используем промежуточную страницу
+    // Она определит контекст и вернет пользователя правильно
+    const webAppUrl = config.webAppUrl
     const botUsername = config.telegram.botUsername
     
     if (!botUsername) {
       throw new Error('TELEGRAM_BOT_USERNAME не установлен. Установите в переменных окружения.')
     }
     
-    const returnUrl = `https://t.me/${botUsername}`
+    const returnUrl = `${webAppUrl}/payment-return.html?bot=${encodeURIComponent(botUsername)}`
 
     console.log('💳 Payment return URL:', returnUrl)
     console.log('   Bot username:', botUsername)
