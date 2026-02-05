@@ -238,7 +238,6 @@ function App() {
           <div className="mt-4 inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-md border border-gray-200/60 dark:border-gray-700/60">
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {habitsCountLabel}
-              {isPremium && <span className="text-indigo-600 dark:text-indigo-400 font-semibold"> / ∞</span>}
             </span>
           </div>
         </header>
