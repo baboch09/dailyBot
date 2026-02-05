@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 export type ReminderMode = 'daily' | 'interval' | 'weekdays' | 'custom'
 
@@ -62,8 +63,6 @@ export default function ReminderBottomSheet({
     }
   }, [isOpen])
 
-  if (!isOpen) return null
-
   const effectiveMode = !isPremium && mode !== 'daily' ? 'daily' : mode
   const previewText = reminderEnabled
     ? effectiveMode === 'daily'
@@ -83,15 +82,15 @@ export default function ReminderBottomSheet({
     onModeChange?.(m)
   }
 
-  return (
+  const modalContent = !isOpen ? null : (
     <>
       <div
-        className="fixed inset-0 bg-black/40 z-40 transition-opacity"
+        className="fixed inset-0 bg-black/40 z-[10000] transition-opacity"
         aria-hidden
         onClick={onClose}
       />
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+        className="fixed inset-0 z-[10001] flex items-center justify-center p-4 pointer-events-none"
         aria-hidden
       >
         <div
@@ -214,4 +213,6 @@ export default function ReminderBottomSheet({
       </div>
     </>
   )
+
+  return createPortal(modalContent, document.body)
 }
