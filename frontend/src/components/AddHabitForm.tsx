@@ -291,10 +291,10 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         onModeChange={() => {}}
         time={reminderTime}
         onTimeChange={setReminderTime}
-        reminderEnabled={formData.reminderEnabled}
+        reminderEnabled={!!formData.reminderEnabled}
         onReminderEnabledChange={(enabled) => setFormData(f => ({ ...f, reminderEnabled: enabled }))}
         onSave={() => setReminderSheetOpen(false)}
-        isPremium={isPremium}
+        isPremium={!!isPremium}
         onRequestPro={onScrollToSubscription}
       />
 
