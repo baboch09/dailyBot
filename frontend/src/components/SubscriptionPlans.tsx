@@ -200,13 +200,13 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
             </div>
 
             {/* Преимущества PRO — двухстрочный премиальный формат */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               {PRO_BENEFITS.map((item) => (
                 <div
                   key={item.title}
-                  className="flex gap-4 p-4 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100/50 dark:border-blue-800/30"
+                  className="flex gap-3 py-2.5 px-3 sm:py-2.5 sm:px-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100/50 dark:border-blue-800/30"
                 >
-                  <span className="text-2xl flex-shrink-0 leading-none" aria-hidden>{item.icon}</span>
+                  <span className="text-xl flex-shrink-0 leading-none" aria-hidden>{item.icon}</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">
                       {item.title}
