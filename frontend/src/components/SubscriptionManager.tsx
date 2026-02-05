@@ -248,13 +248,13 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
         </div>
       </div>
 
-      {/* Анимированный блок с тарифами — высота по экрану, контент с прокруткой */}
+      {/* Анимированный блок с тарифами — всегда показывается целиком */}
       <div className={`subscription-plans-container overflow-hidden transition-all duration-300 ease-in-out ${
         showPlans 
-          ? 'max-h-[min(800px,90vh)] opacity-100 mb-4' 
+          ? 'max-h-none opacity-100 mb-4' 
           : 'max-h-0 opacity-0 mb-0'
       }`}>
-        <div className={`h-full overflow-y-auto transition-transform duration-300 ${
+        <div className={`transition-transform duration-300 ${
           showPlans ? 'translate-y-0' : '-translate-y-4'
         }`}>
           <SubscriptionPlans 
