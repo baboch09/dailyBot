@@ -91,19 +91,19 @@ export default function ReminderBottomSheet({
         onClick={onClose}
       />
       <div
-        ref={sheetRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="reminder-sheet-title"
-        className="fixed left-0 right-0 bottom-0 z-50 bg-white dark:bg-gray-800 rounded-t-[28px] shadow-2xl max-h-[85vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+        aria-hidden
       >
-        {/* Ручка */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600" />
-        </div>
-
-        <div className="px-4 pb-6 overflow-y-auto flex-1 min-h-0">
+        <div
+          ref={sheetRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reminder-sheet-title"
+          className="pointer-events-auto w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-[24px] shadow-2xl border border-gray-200 dark:border-gray-700"
+          onClick={(e) => e.stopPropagation()}
+        >
+        <div className="px-5 pt-5 pb-6">
           <h2 id="reminder-sheet-title" className="text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">
             Напоминание
           </h2>
@@ -209,6 +209,7 @@ export default function ReminderBottomSheet({
               {isSaving ? 'Сохранение...' : 'Сохранить'}
             </button>
           </div>
+        </div>
         </div>
       </div>
     </>
