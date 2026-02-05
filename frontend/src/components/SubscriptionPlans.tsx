@@ -9,23 +9,32 @@ interface SubscriptionPlansProps {
   onStatusUpdate?: () => void
 }
 
+type PlanTab = 'month' | 'year' | 'lifetime'
+
+const PRO_BENEFITS = [
+  { icon: '∞', label: '∞ привычек' },
+  { icon: '🔔', label: 'Напоминания' },
+  { icon: '📊', label: 'Аналитика' },
+  { icon: '🎯', label: 'Цели' },
+  { icon: '🎨', label: 'Темы' },
+  { icon: '🤖', label: 'Умные советы' }
+]
+
 export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlansProps) {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [processing, setProcessing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'month' | 'year'>('month')
+  const [processingPlan, setProcessingPlan] = useState<PlanTab | null>(null)
+  const [activeTab, setActiveTab] = useState<PlanTab>('year')
 
   useEffect(() => {
     loadPlans()
   }, [])
 
-  // Аналитика: просмотр тарифов при переключении табов и при первой загрузке
   useEffect(() => {
     if (plans.length > 0) {
-      track('pricing_viewed', {
-        planType: activeTab
-      })
+      track('pricing_viewed', { planType: activeTab })
     }
   }, [activeTab, plans.length])
 
@@ -43,21 +52,14 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
     }
   }
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async (planId: PlanTab) => {
     try {
       setProcessing(true)
+      setProcessingPlan(planId)
       setError('')
-      
-      // Сохраняем тип плана для аналитики после успешной оплаты
-      sessionStorage.setItem('pending_payment_plan', activeTab)
-      
-      const response = await subscriptionApi.createPayment({ planId: activeTab })
-      
-      // Аналитика: начало оплаты
-      track('payment_initiated', {
-        planType: activeTab
-      })
-      
+      sessionStorage.setItem('pending_payment_plan', planId)
+      const response = await subscriptionApi.createPayment({ planId })
+      track('payment_initiated', { planType: planId })
       if (response.confirmationUrl) {
         if (onPaymentCreated) {
           onPaymentCreated(response.confirmationUrl)
@@ -69,6 +71,7 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
       console.error('Error creating payment:', err)
       setError(err.response?.data?.error || err.response?.data?.message || 'Ошибка при создании платежа')
       setProcessing(false)
+      setProcessingPlan(null)
     }
   }
 
@@ -85,15 +88,24 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
 
   const monthPlan = plans.find(p => p.id === 'month')
   const yearPlan = plans.find(p => p.id === 'year')
-  const currentPlan = activeTab === 'month' ? monthPlan : yearPlan
-
-  // Вычисляем выгоду от годовой подписки
-  const monthlyPrice = monthPlan?.price || 79
-  const yearlyPrice = yearPlan?.price || 799
+  const lifetimePlan = plans.find(p => p.id === 'lifetime')
+  const monthlyPrice = monthPlan?.price ?? 79
+  const yearlyPrice = yearPlan?.price ?? 699
   const yearlyMonthlyEquivalent = yearlyPrice / 12
   const savings = (monthlyPrice * 12) - yearlyPrice
   const savingsPercent = Math.round((savings / (monthlyPrice * 12)) * 100)
-  const fullYearPrice = monthlyPrice * 12 // Полная стоимость без выгоды
+  const fullYearPrice = monthlyPrice * 12
+
+  // Дата «доступно до» для lifetime — ограниченное предложение (например +30 дней)
+  const lifetimeOfferEndDate = new Date()
+  lifetimeOfferEndDate.setDate(lifetimeOfferEndDate.getDate() + 30)
+  const lifetimeOfferEndStr = lifetimeOfferEndDate.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+
+  const currentPlan = activeTab === 'month' ? monthPlan : activeTab === 'year' ? yearPlan : lifetimePlan
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-[24px] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
@@ -103,11 +115,11 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
         </div>
       )}
 
-      {/* Табы Месяц/Год */}
+      {/* Табы Месяц | Год (по умолчанию, Лучший выбор) */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50 overflow-hidden rounded-t-[24px]">
         <button
           onClick={() => setActiveTab('month')}
-          className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
+          className={`flex-1 px-3 py-4 text-sm font-semibold transition-all relative ${
             activeTab === 'month'
               ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-md'
               : 'text-gray-500 dark:text-gray-500 opacity-60 hover:opacity-80'
@@ -120,17 +132,20 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
         </button>
         <button
           onClick={() => setActiveTab('year')}
-          className={`flex-1 px-4 py-4 text-sm font-semibold transition-all relative ${
+          className={`flex-1 px-3 py-4 text-sm font-semibold transition-all relative ${
             activeTab === 'year'
               ? 'text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 shadow-md'
               : 'text-gray-500 dark:text-gray-500 opacity-60 hover:opacity-80'
           }`}
         >
-          <span className="flex items-center justify-center gap-2">
+          <span className="flex items-center justify-center gap-2 flex-wrap">
             Год
+            <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-medium rounded-full">
+              Лучший выбор
+            </span>
             {savings > 0 && (
               <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
-                Экономия {savingsPercent}%
+                −{savingsPercent}%
               </span>
             )}
           </span>
@@ -140,11 +155,10 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
         </button>
       </div>
 
-      {/* Контент тарифа */}
+      {/* Контент тарифа Месяц/Год */}
       <div className="p-6 rounded-b-[24px]">
-        {currentPlan ? (
+        {(activeTab === 'month' && monthPlan) || (activeTab === 'year' && yearPlan) ? (
           <div className="space-y-6">
-            {/* Цена */}
             <div className="text-center">
               <div className="flex items-baseline justify-center gap-2 mb-2">
                 {activeTab === 'year' ? (
@@ -153,24 +167,23 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
                       {fullYearPrice} ₽
                     </span>
                     <span className="text-5xl font-bold text-gray-900 dark:text-gray-100">
-                      {currentPlan.price}
+                      {currentPlan!.price}
                     </span>
                     <span className="text-xl text-gray-600 dark:text-gray-400">₽</span>
                   </>
                 ) : (
                   <>
                     <span className="text-5xl font-bold text-gray-900 dark:text-gray-100">
-                      {currentPlan.price}
+                      {currentPlan!.price}
                     </span>
                     <span className="text-xl text-gray-600 dark:text-gray-400">₽</span>
                   </>
                 )}
               </div>
-              
               {activeTab === 'year' && (
                 <div className="space-y-1">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {yearlyMonthlyEquivalent.toFixed(0)} ₽/месяц
+                    {yearlyMonthlyEquivalent.toFixed(0)} ₽/мес
                   </p>
                   <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 rounded-full">
                     <span className="text-green-700 dark:text-green-400 text-sm font-semibold">
@@ -179,49 +192,67 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
                   </div>
                 </div>
               )}
-              
               {activeTab === 'month' && (
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  за {currentPlan.durationDays} дней
+                  за {currentPlan!.durationDays} дней
                 </p>
               )}
             </div>
 
-            {/* Преимущества */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]">
-                <span className="text-xl">✓</span>
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                  Безлимит привычек
-                </span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]">
-                <span className="text-xl">✓</span>
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                  Все функции доступны
-                </span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]">
-                <span className="text-xl">✓</span>
-                <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                  Напоминания в Telegram
-                </span>
-              </div>
+            {/* Преимущества PRO */}
+            <div className="space-y-2">
+              {PRO_BENEFITS.map((item) => (
+                <div
+                  key={item.label}
+                  className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]"
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                    ✔️ {item.label}
+                  </span>
+                </div>
+              ))}
             </div>
 
-            {/* Кнопка подписки */}
             <button
-              onClick={handleSubscribe}
+              onClick={() => handleSubscribe(activeTab)}
               disabled={processing}
               className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-[16px] font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {processing ? 'Обработка...' : `Оформить подписку`}
+              {processing && processingPlan === activeTab ? 'Обработка...' : 'Оформить подписку'}
             </button>
-
           </div>
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-600 dark:text-gray-400">Тариф не найден</p>
+          </div>
+        )}
+
+        {/* Блок «Навсегда» — отдельно */}
+        {lifetimePlan && (
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-4 rounded-[20px] bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-200 dark:border-amber-700/50">
+              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">
+                Доступно до {lifetimeOfferEndStr}
+              </p>
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                    Навсегда — {lifetimePlan.price} ₽
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Один платёж, доступ навсегда
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleSubscribe('lifetime')}
+                  disabled={processing}
+                  className="flex-shrink-0 px-5 py-2.5 rounded-xl font-semibold bg-amber-500 hover:bg-amber-600 text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {processing && processingPlan === 'lifetime' ? 'Обработка...' : 'Купить'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

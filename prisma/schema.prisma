@@ -37,6 +37,10 @@ model Habit {
   description String?
   reminderTime String?
   reminderEnabled Boolean @default(true)
+  goalEnabled   Boolean @default(false)
+  goalType      String?
+  goalTarget    Int?
+  goalPeriodDays Int?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

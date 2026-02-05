@@ -76,6 +76,10 @@ export async function getHabits(req: Request, res: Response) {
         description: habit.description,
         reminderTime: habit.reminderTime,
         reminderEnabled: habit.reminderEnabled,
+        goalEnabled: habit.goalEnabled ?? false,
+        goalType: habit.goalType ?? null,
+        goalTarget: habit.goalTarget ?? null,
+        goalPeriodDays: habit.goalPeriodDays ?? null,
         createdAt: habit.createdAt.toISOString(),
         updatedAt: habit.updatedAt.toISOString(),
         streak,
@@ -158,7 +162,7 @@ export async function createHabit(req: Request, res: Response) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
     }
     
-    const { name, description, reminderTime, reminderEnabled } = req.body
+    const { name, description, reminderTime, reminderEnabled, goalEnabled, goalType, goalTarget, goalPeriodDays } = req.body
 
     // Валидация: проверяем, что имя не пустое после trim
     const trimmedName = name?.trim()
@@ -208,6 +212,16 @@ export async function createHabit(req: Request, res: Response) {
         throw new Error('PREMIUM_REQUIRED_FOR_REMINDERS')
       }
 
+      // Цели — только для Premium
+      const wantsGoal = goalEnabled === true && (goalType || goalTarget)
+      if (wantsGoal && !hasPremium) {
+        throw new Error('PREMIUM_REQUIRED_FOR_GOALS')
+      }
+      const finalGoalEnabled = hasPremium ? (goalEnabled ?? false) : false
+      const finalGoalType = hasPremium && finalGoalEnabled ? (goalType?.trim() || null) : null
+      const finalGoalTarget = hasPremium && finalGoalEnabled && goalTarget != null ? Number(goalTarget) : null
+      const finalGoalPeriodDays = hasPremium && finalGoalEnabled && goalPeriodDays != null ? Number(goalPeriodDays) : null
+
       // Для free пользователей всегда отключаем напоминания
       const finalReminderEnabled = hasPremium ? (reminderEnabled ?? false) : false
       const finalReminderTime = hasPremium ? (reminderTime?.trim() || null) : null
@@ -219,7 +233,11 @@ export async function createHabit(req: Request, res: Response) {
           name: trimmedName,
           description: description?.trim() || null,
           reminderTime: finalReminderTime,
-          reminderEnabled: finalReminderEnabled
+          reminderEnabled: finalReminderEnabled,
+          goalEnabled: finalGoalEnabled,
+          goalType: finalGoalType,
+          goalTarget: finalGoalTarget,
+          goalPeriodDays: finalGoalPeriodDays
         }
       })
     })
@@ -233,6 +251,10 @@ export async function createHabit(req: Request, res: Response) {
       description: habit.description,
       reminderTime: habit.reminderTime,
       reminderEnabled: habit.reminderEnabled,
+      goalEnabled: habit.goalEnabled ?? false,
+      goalType: habit.goalType ?? null,
+      goalTarget: habit.goalTarget ?? null,
+      goalPeriodDays: habit.goalPeriodDays ?? null,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
       streak,
@@ -249,7 +271,13 @@ export async function createHabit(req: Request, res: Response) {
         upgradeRequired: true
       })
     }
-    
+    if (error.message === 'PREMIUM_REQUIRED_FOR_GOALS') {
+      return res.status(403).json({
+        error: 'Premium subscription required for goals',
+        message: 'Цели доступны только с Premium подпиской',
+        upgradeRequired: true
+      })
+    }
     if (error.message === 'FREE_PLAN_LIMIT_REACHED') {
       return res.status(403).json({
         error: 'Free plan limit reached',
@@ -287,7 +315,7 @@ export async function updateHabit(req: Request, res: Response) {
     }
     
     const { id } = req.params
-    const { name, description } = req.body
+    const { name, description, goalEnabled, goalType, goalTarget, goalPeriodDays } = req.body
 
     // Проверяем, что привычка принадлежит пользователю
     const existingHabit = await prisma.habit.findFirst({
@@ -346,10 +374,25 @@ export async function updateHabit(req: Request, res: Response) {
         updateData.reminderEnabled = req.body.reminderEnabled ?? true
       }
     }
-    // Если пользователь не Premium, отключаем напоминания
     if (!hasPremium) {
       updateData.reminderEnabled = false
       updateData.reminderTime = null
+    }
+
+    // Цели — только для Premium
+    if ('goalEnabled' in req.body || 'goalType' in req.body || 'goalTarget' in req.body || 'goalPeriodDays' in req.body) {
+      if (req.body.goalEnabled && !hasPremium) {
+        return res.status(403).json({
+          error: 'Premium subscription required for goals',
+          message: 'Цели доступны только с Premium подпиской',
+          upgradeRequired: true
+        })
+      }
+      const newGoalEnabled = hasPremium && (req.body.goalEnabled === true)
+      updateData.goalEnabled = newGoalEnabled
+      updateData.goalType = newGoalEnabled ? (req.body.goalType?.trim() || null) : null
+      updateData.goalTarget = newGoalEnabled && req.body.goalTarget != null ? Number(req.body.goalTarget) : null
+      updateData.goalPeriodDays = newGoalEnabled && req.body.goalPeriodDays != null ? Number(req.body.goalPeriodDays) : null
     }
 
     const habit = await prisma.habit.update({
@@ -366,6 +409,10 @@ export async function updateHabit(req: Request, res: Response) {
       description: habit.description,
       reminderTime: habit.reminderTime,
       reminderEnabled: habit.reminderEnabled,
+      goalEnabled: habit.goalEnabled ?? false,
+      goalType: habit.goalType ?? null,
+      goalTarget: habit.goalTarget ?? null,
+      goalPeriodDays: habit.goalPeriodDays ?? null,
       createdAt: habit.createdAt.toISOString(),
       updatedAt: habit.updatedAt.toISOString(),
       streak,

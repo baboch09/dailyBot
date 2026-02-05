@@ -171,60 +171,72 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
 
   return (
     <div className="mb-4">
-      {/* Красивая карточка статуса подписки */}
-      <div className={`p-4 rounded-[24px] shadow-lg mb-4 transition-all ${
+      {/* Карточка статуса подписки: Free — бейдж + «Получить PRO»; Pro — цветная карточка + остаток дней + «Продлить» */}
+      <div className={`p-4 sm:p-5 rounded-[24px] shadow-lg mb-4 transition-all border ${
         isActive 
-          ? 'bg-gradient-to-br from-blue-500 to-indigo-600' 
-          : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600'
+          ? 'bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-400/30 dark:border-indigo-500/30' 
+          : 'bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-gray-200 dark:border-gray-700'
       }`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center ${
               isActive 
                 ? 'bg-white/20 backdrop-blur-sm' 
-                : 'bg-gray-300/50 dark:bg-gray-600/50'
+                : 'bg-gray-100 dark:bg-gray-700'
             }`}>
-              <span className="text-2xl">{isActive ? '💎' : '🔒'}</span>
+              <span className="text-2xl" aria-hidden>{isActive ? '💎' : '🔒'}</span>
             </div>
-            <div>
-              <p className={`font-semibold text-sm ${
-                isActive ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'
-              }`}>
-                {subscriptionLevel}
-              </p>
-              {isActive && status?.daysRemaining ? (
-                <p className={`text-xs ${
-                  isActive ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className={`font-semibold text-base ${
+                  isActive ? 'text-white' : 'text-gray-800 dark:text-gray-200'
                 }`}>
-                  {status.daysRemaining} дней осталось
+                  {subscriptionLevel}
                 </p>
-              ) : (
-                <p className={`text-xs ${
-                  isActive ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
-                }`}>
-                  Максимум 3 привычки
+                {!isActive && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                    Free
+                  </span>
+                )}
+              </div>
+              {isActive && status?.daysRemaining != null ? (
+                <p className="text-sm text-white/85 mt-0.5">
+                  Осталось {status.daysRemaining} {status.daysRemaining === 1 ? 'день' : status.daysRemaining < 5 ? 'дня' : 'дней'}
+                </p>
+              ) : !isActive && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  До 3 привычек
                 </p>
               )}
             </div>
           </div>
-          {/* Кнопка "Обновить" показываем только если нет активной подписки */}
-          {!isActive && (
-            <button
-              data-update-subscription-button
-              onClick={togglePlans}
-              className="px-4 py-2 rounded-full text-sm font-semibold transition-all bg-white/90 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-white dark:hover:bg-gray-700 active:scale-95 flex items-center gap-2"
-            >
-              <span>Обновить</span>
-              <svg 
-                className={`w-4 h-4 transition-transform duration-300 ${showPlans ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+          <div className="flex-shrink-0">
+            {isActive ? (
+              <button
+                data-update-subscription-button
+                onClick={togglePlans}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-white/95 text-indigo-600 hover:bg-white active:scale-95 shadow-sm"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          )}
+                Продлить
+              </button>
+            ) : (
+              <button
+                data-update-subscription-button
+                onClick={togglePlans}
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700 active:scale-95 shadow-md flex items-center gap-2"
+              >
+                <span>Получить PRO</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform duration-300 ${showPlans ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

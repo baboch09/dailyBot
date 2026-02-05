@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { track } from '@vercel/analytics'
 import { Habit } from '../types'
 import { habitsApi } from '../services/api'
+import ReminderBottomSheet, { type ReminderMode } from './ReminderBottomSheet'
 
 interface HabitItemProps {
   habit: Habit
@@ -15,14 +16,19 @@ interface HabitItemProps {
 const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPremium = false, onScrollToSubscription }) => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
-  const [isEditingReminder, setIsEditingReminder] = useState(false)
-  const [isEditingHabit, setIsEditingHabit] = useState(false)
-  const [showMenu, setShowMenu] = useState(false)
+  const [reminderSheetOpen, setReminderSheetOpen] = useState(false)
+  const [reminderMode, setReminderMode] = useState<ReminderMode>('daily')
   const [reminderTime, setReminderTime] = useState(habit.reminderTime || '09:00')
   const [reminderEnabled, setReminderEnabled] = useState(habit.reminderEnabled ?? false)
   const [isUpdatingReminder, setIsUpdatingReminder] = useState(false)
+  const [isEditingHabit, setIsEditingHabit] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [editingName, setEditingName] = useState(habit.name)
   const [editingDescription, setEditingDescription] = useState(habit.description || '')
+  const [editingGoalEnabled, setEditingGoalEnabled] = useState(habit.goalEnabled ?? false)
+  const [editingGoalType, setEditingGoalType] = useState<'streak' | 'count' | 'period'>((habit.goalType as 'streak' | 'count' | 'period') || 'streak')
+  const [editingGoalTarget, setEditingGoalTarget] = useState(habit.goalTarget ?? 21)
+  const [editingGoalPeriodDays, setEditingGoalPeriodDays] = useState(habit.goalPeriodDays ?? 21)
   const [isUpdatingHabit, setIsUpdatingHabit] = useState(false)
 
   const handleComplete = async () => {
@@ -90,44 +96,37 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const handleUpdateReminder = async () => {
     setIsUpdatingReminder(true)
     try {
-      // Сохраняем предыдущее состояние для аналитики
       const previousReminderEnabled = habit.reminderEnabled ?? false
-      
       await habitsApi.update(habit.id, {
         reminderTime: reminderEnabled ? reminderTime : null,
         reminderEnabled: reminderEnabled
       })
-      
-      // Аналитика: установка или удаление напоминания
-      if (reminderEnabled && !previousReminderEnabled) {
-        // Установка напоминания
-        if (isPremium) {
-          track('reminder_installed', {
-            isPremium: true
-          })
-        }
+      if (reminderEnabled && !previousReminderEnabled && isPremium) {
+        track('reminder_installed', { isPremium: true })
       } else if (!reminderEnabled && previousReminderEnabled) {
-        // Удаление напоминания (для всех пользователей)
-        track('reminder_deleted', {
-          isPremium: isPremium
-        })
+        track('reminder_deleted', { isPremium: isPremium })
       }
-      
-      setIsEditingReminder(false)
+      setReminderSheetOpen(false)
       onUpdate()
     } catch (error: any) {
       console.error('Error updating reminder:', error)
       if (error.response?.status === 403 && error.response?.data?.upgradeRequired) {
+        setReminderSheetOpen(false)
+        if (onScrollToSubscription) onScrollToSubscription()
         alert('Напоминания доступны только с Premium подпиской')
-        if (onScrollToSubscription) {
-          onScrollToSubscription()
-        }
       } else {
         alert('Ошибка при обновлении напоминания')
       }
     } finally {
       setIsUpdatingReminder(false)
     }
+  }
+
+  const openReminderSheet = () => {
+    setReminderTime(habit.reminderTime || '09:00')
+    setReminderEnabled(habit.reminderEnabled ?? false)
+    setReminderSheetOpen(true)
+    setShowMenu(false)
   }
 
   const handleUpdateHabit = async () => {
@@ -140,14 +139,21 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     try {
       await habitsApi.update(habit.id, {
         name: editingName.trim(),
-        description: editingDescription.trim() || undefined
+        description: editingDescription.trim() || undefined,
+        goalEnabled: isPremium ? editingGoalEnabled : false,
+        goalType: isPremium && editingGoalEnabled ? editingGoalType : undefined,
+        goalTarget: isPremium && editingGoalEnabled ? editingGoalTarget : undefined,
+        goalPeriodDays: isPremium && editingGoalEnabled ? editingGoalPeriodDays : undefined
       })
       setIsEditingHabit(false)
       setShowMenu(false)
       onUpdate()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating habit:', error)
-      alert('Ошибка при обновлении привычки')
+      if (error.response?.status === 403 && error.response?.data?.upgradeRequired && onScrollToSubscription) {
+        onScrollToSubscription()
+      }
+      alert(error.response?.data?.message || 'Ошибка при обновлении привычки')
     } finally {
       setIsUpdatingHabit(false)
     }
@@ -343,18 +349,68 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                    Описание
-                  </label>
+                  <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Описание</label>
                   <textarea
                     value={editingDescription}
                     onChange={(e) => setEditingDescription(e.target.value)}
-                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm resize-none"
+                    className="w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm resize-none"
                     placeholder="Описание (необязательно)"
                     rows={2}
                     maxLength={500}
                   />
                 </div>
+                {isPremium && (
+                  <div className="p-2.5 rounded-[14px] bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">🎯 Цель</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editingGoalEnabled}
+                          onChange={(e) => setEditingGoalEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-gray-200 dark:bg-gray-600 rounded-full peer peer-checked:bg-amber-500 relative after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4" />
+                      </label>
+                    </div>
+                    {editingGoalEnabled && (
+                      <div className="flex gap-2 flex-wrap mt-2">
+                        {(['streak', 'count', 'period'] as const).map((t) => (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setEditingGoalType(t)}
+                            className={`px-2 py-1.5 rounded-lg text-xs font-medium ${
+                              editingGoalType === t ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
+                            }`}
+                          >
+                            {t === 'streak' ? 'Серия' : t === 'count' ? 'Кол-во' : 'Период'}
+                          </button>
+                        ))}
+                        {editingGoalType === 'streak' && [21, 30, 90].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setEditingGoalTarget(n)}
+                            className={`px-2 py-1.5 rounded-lg text-xs ${editingGoalTarget === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border'}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                        {(editingGoalType === 'count' || editingGoalType === 'period') && [21, 30, 90].map((n) => (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => setEditingGoalPeriodDays(n)}
+                            className={`px-2 py-1.5 rounded-lg text-xs ${editingGoalPeriodDays === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border'}`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={handleUpdateHabit}
@@ -368,6 +424,10 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                       setIsEditingHabit(false)
                       setEditingName(habit.name)
                       setEditingDescription(habit.description || '')
+                      setEditingGoalEnabled(habit.goalEnabled ?? false)
+                      setEditingGoalType((habit.goalType as 'streak' | 'count' | 'period') || 'streak')
+                      setEditingGoalTarget(habit.goalTarget ?? 21)
+                      setEditingGoalPeriodDays(habit.goalPeriodDays ?? 21)
                     }}
                     className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 [@media(hover:hover)]:hover:border-gray-300 [@media(hover:hover)]:dark:hover:border-gray-600 rounded-full [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
                   >
@@ -414,10 +474,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                         </button>
                         {isPremium && (
                           <button
-                            onClick={() => {
-                              setIsEditingReminder(true)
-                              setShowMenu(false)
-                            }}
+                            onClick={openReminderSheet}
                             className="w-full px-4 py-3 text-left text-sm text-gray-700 dark:text-gray-200 [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,77 +511,51 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   </p>
                 )}
 
-                {/* Напоминание - показываем только для Premium */}
-                {isPremium && habit.reminderTime && !isEditingReminder && (
-                  <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
+                {/* Напоминание — только для Premium; по клику открывается bottom sheet */}
+                {isPremium && (
+                  <button
+                    type="button"
+                    onClick={openReminderSheet}
+                    className="mb-2 w-full p-2.5 text-left bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800 hover:opacity-90 transition-opacity"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-lg">⏰</span>
                       <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        {habit.reminderEnabled 
+                        {habit.reminderEnabled && habit.reminderTime
                           ? `Напоминание в ${formatTime(habit.reminderTime)}`
-                          : 'Напоминание отключено'
-                        }
+                          : 'Напоминание отключено'}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 )}
 
-                {/* Редактирование напоминания */}
-                {isEditingReminder && isPremium && (
-                  <div className="mb-2 p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                          <span>⏰</span>
-                          <span>Включить напоминание</span>
-                        </label>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={reminderEnabled}
-                            onChange={(e) => setReminderEnabled(e.target.checked)}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
-                        </label>
-                      </div>
-                      {reminderEnabled && (
-                        <div className="w-full min-w-0">
-                          <label htmlFor={`reminder-${habit.id}`} className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
-                            Время
-                          </label>
-                          <input
-                            id={`reminder-${habit.id}`}
-                            type="time"
-                            value={reminderTime}
-                            onChange={(e) => setReminderTime(e.target.value)}
-                            className="w-full min-w-0 px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm box-border"
-                          />
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleUpdateReminder}
-                          disabled={isUpdatingReminder}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 [@media(hover:hover)]:hover:from-blue-600 [@media(hover:hover)]:hover:to-indigo-700 text-white text-xs font-semibold py-2 px-4 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isUpdatingReminder ? 'Сохранение...' : 'Сохранить'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsEditingReminder(false)
-                            setReminderTime(habit.reminderTime || '09:00')
-                            setReminderEnabled(habit.reminderEnabled ?? false)
-                          }}
-                          className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 [@media(hover:hover)]:hover:border-gray-300 [@media(hover:hover)]:dark:hover:border-gray-600 rounded-full [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
-                        >
-                          Отмена
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <ReminderBottomSheet
+                  isOpen={reminderSheetOpen}
+                  onClose={() => setReminderSheetOpen(false)}
+                  mode={reminderMode}
+                  onModeChange={setReminderMode}
+                  time={reminderTime}
+                  onTimeChange={setReminderTime}
+                  reminderEnabled={reminderEnabled}
+                  onReminderEnabledChange={setReminderEnabled}
+                  onSave={handleUpdateReminder}
+                  isSaving={isUpdatingReminder}
+                  isPremium={isPremium}
+                  onRequestPro={onScrollToSubscription}
+                />
               </>
+            )}
+
+            {/* Цель: превью прогресса (PRO) */}
+            {habit.goalEnabled && habit.goalType === 'streak' && habit.goalTarget != null && (
+              <div className="mb-2 p-2.5 rounded-[14px] bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                  🎯 {habit.goalTarget} {habit.goalTarget === 1 ? 'день' : habit.goalTarget < 5 ? 'дня' : 'дней'} подряд — {Math.min(habit.streak, habit.goalTarget)}/{habit.goalTarget} выполнено
+                </p>
+                {habit.streak >= habit.goalTarget && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">✅ Цель достигнута!</p>
+                )}
+              </div>
             )}
 
             {/* Статистика и streak */}

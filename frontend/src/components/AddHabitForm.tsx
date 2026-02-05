@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { track } from '@vercel/analytics'
 import { habitsApi, subscriptionApi } from '../services/api'
 import { CreateHabitDto, SubscriptionStatus } from '../types'
+import ReminderBottomSheet from './ReminderBottomSheet'
 
 interface AddHabitFormProps {
   onSuccess: () => void
@@ -17,9 +18,14 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
   const [formData, setFormData] = useState<CreateHabitDto>({
     name: '',
     description: '',
-    reminderEnabled: false // По умолчанию выключено, т.к. только для Premium
+    reminderEnabled: false,
+    goalEnabled: false
   })
   const [reminderTime, setReminderTime] = useState('09:00')
+  const [goalType, setGoalType] = useState<'streak' | 'count' | 'period'>('streak')
+  const [goalTarget, setGoalTarget] = useState(21)
+  const [goalPeriodDays, setGoalPeriodDays] = useState(21)
+  const [reminderSheetOpen, setReminderSheetOpen] = useState(false)
   const [error, setError] = useState('')
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
   const [habitsCount, setHabitsCount] = useState(propsHabitsCount)
@@ -57,7 +63,11 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         name: formData.name.trim(),
         description: formData.description?.trim() || undefined,
         reminderTime: formData.reminderEnabled ? reminderTime : null,
-        reminderEnabled: formData.reminderEnabled
+        reminderEnabled: formData.reminderEnabled,
+        goalEnabled: formData.goalEnabled && isPremium ? true : false,
+        goalType: formData.goalEnabled && isPremium ? goalType : undefined,
+        goalTarget: formData.goalEnabled && isPremium ? goalTarget : undefined,
+        goalPeriodDays: formData.goalEnabled && isPremium ? goalPeriodDays : undefined
       })
       // Аналитика: добавление привычки
       track('habit_created', {
@@ -73,8 +83,10 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         })
       }
       
-      setFormData({ name: '', description: '', reminderEnabled: true })
+      setFormData({ name: '', description: '', reminderEnabled: true, goalEnabled: false })
       setReminderTime('09:00')
+      setGoalTarget(21)
+      setGoalPeriodDays(21)
       setIsOpen(false)
       setError('')
       await loadSubscriptionStatus() // Обновляем статус после создания
@@ -84,7 +96,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
       
       // Обработка ошибки лимита Free плана
       if (error.response?.status === 403 && error.response?.data?.upgradeRequired) {
-        setError(error.response.data.message || 'Достигнут лимит бесплатного плана')
+        setError(error.response.data.message || 'Достигнут лимит или функция доступна только в PRO')
         setIsOpen(false)
         // Скроллим к подписке
         if (onScrollToSubscription) {
@@ -244,7 +256,6 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
                 if (isPremium) {
                   setFormData({ ...formData, reminderEnabled: e.target.checked })
                 } else if (onScrollToSubscription) {
-                  // Если попытались включить без Premium, скроллим к подписке
                   onScrollToSubscription()
                 }
               }}
@@ -253,16 +264,132 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-blue-500 peer-checked:to-indigo-600"></div>
           </label>
         </div>
-        
         {formData.reminderEnabled && isPremium && (
-          <div className="mt-2 w-full min-w-0">
+          <div className="mt-2 flex items-center gap-2">
             <input
               id="reminderTime"
               type="time"
               value={reminderTime}
               onChange={(e) => setReminderTime(e.target.value)}
-              className="w-full max-w-full px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-all text-sm box-border"
+              className="flex-1 min-w-0 px-3 py-2 border-2 border-gray-200 dark:border-gray-700 rounded-[14px] focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
             />
+            <button
+              type="button"
+              onClick={() => setReminderSheetOpen(true)}
+              className="px-3 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Настроить
+            </button>
+          </div>
+        )}
+      </div>
+
+      <ReminderBottomSheet
+        isOpen={reminderSheetOpen}
+        onClose={() => setReminderSheetOpen(false)}
+        mode="daily"
+        onModeChange={() => {}}
+        time={reminderTime}
+        onTimeChange={setReminderTime}
+        reminderEnabled={formData.reminderEnabled}
+        onReminderEnabledChange={(enabled) => setFormData(f => ({ ...f, reminderEnabled: enabled }))}
+        onSave={() => setReminderSheetOpen(false)}
+        isPremium={isPremium}
+        onRequestPro={onScrollToSubscription}
+      />
+
+      {/* Секция «Цель» — только PRO */}
+      <div className={`mb-4 p-3 rounded-[16px] border ${
+        isPremium
+          ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-amber-100 dark:border-amber-800'
+          : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-75'
+      }`}>
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg">🎯</span>
+          <div className="flex-1">
+            <h3 className="text-xs font-bold text-gray-800 dark:text-gray-200">Цель</h3>
+            {!isPremium && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">💎 Доступно в PRO</p>
+            )}
+          </div>
+          <label className={`relative inline-flex items-center ${!isPremium ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+            <input
+              type="checkbox"
+              checked={!!(formData.goalEnabled && isPremium)}
+              disabled={!isPremium}
+              onChange={(e) => {
+                if (isPremium) setFormData(f => ({ ...f, goalEnabled: e.target.checked }))
+                else onScrollToSubscription?.()
+              }}
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 dark:bg-gray-600 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gradient-to-r peer-checked:from-amber-500 peer-checked:to-orange-500" />
+          </label>
+        </div>
+        {formData.goalEnabled && isPremium && (
+          <div className="space-y-3 mt-2">
+            <div>
+              <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Тип цели</label>
+              <div className="flex gap-2 flex-wrap">
+                {(['streak', 'count', 'period'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setGoalType(t)}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+                      goalType === t
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    {t === 'streak' ? 'Серия дней' : t === 'count' ? 'Кол-во раз' : 'Период'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {goalType === 'streak' && (
+              <div>
+                <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Дней подряд</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[21, 30, 90].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setGoalTarget(n)}
+                      className={`px-3 py-2 rounded-xl text-sm font-medium ${
+                        goalTarget === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {(goalType === 'count' || goalType === 'period') && (
+              <div>
+                <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Период (дней)</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[21, 30, 90].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setGoalPeriodDays(n)}
+                      className={`px-3 py-2 rounded-xl text-sm font-medium ${
+                        goalPeriodDays === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              {goalType === 'streak' && `${goalTarget} дней подряд`}
+              {goalType === 'count' && `Количество раз за ${goalPeriodDays} дней`}
+              {goalType === 'period' && `Выполнять в течение ${goalPeriodDays} дней`}
+            </p>
           </div>
         )}
       </div>
@@ -294,7 +421,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
           type="button"
           onClick={() => {
             setIsOpen(false)
-            setFormData({ name: '', description: '', reminderEnabled: true })
+            setFormData({ name: '', description: '', reminderEnabled: true, goalEnabled: false })
             setReminderTime('09:00')
             setError('')
           }}

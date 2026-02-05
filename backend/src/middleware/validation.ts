@@ -18,21 +18,18 @@ export const createHabitValidation: ValidationChain[] = [
   body('reminderTime')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value) => {
-      // Если значение не передано, null или пустая строка - разрешаем
-      if (!value || value === '' || value === null) {
-        return true
-      }
-      // Если передано - проверяем формат
+      if (!value || value === '' || value === null) return true
       const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
       if (!timeRegex.test(value)) {
         throw new Error('Время напоминания должно быть в формате HH:MM (например, 09:30)')
       }
       return true
     }),
-  body('reminderEnabled')
-    .optional()
-    .isBoolean()
-    .withMessage('reminderEnabled должен быть boolean')
+  body('reminderEnabled').optional().isBoolean().withMessage('reminderEnabled должен быть boolean'),
+  body('goalEnabled').optional().isBoolean().withMessage('goalEnabled должен быть boolean'),
+  body('goalType').optional().trim().isIn(['streak', 'count', 'period']).withMessage('goalType: streak, count или period'),
+  body('goalTarget').optional().isInt({ min: 1, max: 365 }).withMessage('goalTarget от 1 до 365'),
+  body('goalPeriodDays').optional().isInt({ min: 1, max: 365 }).withMessage('goalPeriodDays от 1 до 365')
 ]
 
 /**
@@ -65,8 +62,9 @@ export const updateHabitValidation: ValidationChain[] = [
       }
       return true
     }),
-  body('reminderEnabled')
-    .optional()
-    .isBoolean()
-    .withMessage('reminderEnabled должен быть boolean')
+  body('reminderEnabled').optional().isBoolean().withMessage('reminderEnabled должен быть boolean'),
+  body('goalEnabled').optional().isBoolean().withMessage('goalEnabled должен быть boolean'),
+  body('goalType').optional().trim().isIn(['streak', 'count', 'period']).withMessage('goalType: streak, count или period'),
+  body('goalTarget').optional().isInt({ min: 1, max: 365 }).withMessage('goalTarget от 1 до 365'),
+  body('goalPeriodDays').optional().isInt({ min: 1, max: 365 }).withMessage('goalPeriodDays от 1 до 365')
 ]

@@ -4,8 +4,12 @@ export interface Habit {
   id: string
   name: string
   description: string | null
-  reminderTime?: string | null // Время напоминания в формате "HH:MM" (например "09:00")
+  reminderTime?: string | null
   reminderEnabled?: boolean
+  goalEnabled?: boolean
+  goalType?: string | null // 'streak' | 'count' | 'period'
+  goalTarget?: number | null
+  goalPeriodDays?: number | null
   createdAt: string
   updatedAt: string
   streak: number
@@ -27,15 +31,23 @@ export interface HabitStats {
 export interface CreateHabitDto {
   name: string
   description?: string
-  reminderTime?: string | null // Время напоминания в формате "HH:MM" (например "09:00")
+  reminderTime?: string | null
   reminderEnabled?: boolean
+  goalEnabled?: boolean
+  goalType?: string
+  goalTarget?: number
+  goalPeriodDays?: number
 }
 
 export interface UpdateHabitDto {
   name?: string
   description?: string
-  reminderTime?: string | null // Время напоминания в формате "HH:MM" (например "09:00")
+  reminderTime?: string | null
   reminderEnabled?: boolean
+  goalEnabled?: boolean
+  goalType?: string
+  goalTarget?: number
+  goalPeriodDays?: number
 }
 
 // Типы для подписки
@@ -66,7 +78,7 @@ export interface SubscriptionPlansResponse {
 }
 
 export interface CreatePaymentRequest {
-  planId: 'month' | 'year'
+  planId: 'month' | 'year' | 'lifetime'
 }
 
 export interface CreatePaymentResponse {

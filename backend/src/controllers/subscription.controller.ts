@@ -3,17 +3,23 @@ import prisma from '../utils/prisma'
 import { createPayment, getPayment } from '../utils/yookassa'
 import { config } from '../config'
 
-// Тарифы подписки
+// Тарифы подписки (обратно совместимы с существующими planId)
 const SUBSCRIPTION_PLANS = {
   month: {
     name: 'Месяц',
-    price: 79, // рублей
+    price: 79,
     durationDays: 30
   },
   year: {
     name: 'Год',
-    price: 799, // рублей (экономия)
+    price: 699,
     durationDays: 365
+  },
+  lifetime: {
+    name: 'Навсегда',
+    price: 2199,
+    // Условно 100 лет — для расчёта subscriptionExpiresAt; в UI показываем «навсегда»
+    durationDays: 36525
   }
 }
 
@@ -143,7 +149,8 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
     
     const { planId } = req.body
 
-    if (!planId || !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]) {
+    const planKey = planId as keyof typeof SUBSCRIPTION_PLANS
+    if (!planId || !SUBSCRIPTION_PLANS[planKey]) {
       return res.status(400).json({ error: 'Invalid plan ID' })
     }
 
@@ -203,7 +210,7 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       }
     }
 
-    const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
+    const plan = SUBSCRIPTION_PLANS[planKey]
 
     const botUsername = config.telegram.botUsername
     const webAppUrl = config.webAppUrl

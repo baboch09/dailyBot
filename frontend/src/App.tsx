@@ -211,33 +211,36 @@ function App() {
     )
   }
 
+  const isPremium = !!(
+    subscriptionStatus?.subscriptionStatus === 'active' &&
+    subscriptionStatus?.subscriptionExpiresAt &&
+    new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
+    (subscriptionStatus?.daysRemaining ?? 0) > 0
+  )
+  const habitsLimitLabel = isPremium ? '∞' : '3'
+  const habitsCountLabel = `Привычек: ${habits.length} из ${habitsLimitLabel}`
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 pb-8">
       <div className="max-w-2xl mx-auto">
-        <header className="mb-6 text-center pt-4">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[28px] mb-4 shadow-lg">
-            <span className="text-3xl">✨</span>
+        {/* Верхний блок: иконка, заголовок, подзаголовок */}
+        <header className="mb-6 text-center pt-2 sm:pt-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[24px] sm:rounded-[28px] mb-3 sm:mb-4 shadow-lg ring-2 ring-white/20 dark:ring-gray-800/50">
+            <span className="text-2xl sm:text-3xl" aria-hidden>✨</span>
           </div>
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-1.5 sm:mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
             Трекер привычек
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-lg">
-            Отслеживайте свои ежедневные привычки и достигайте целей
+          <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg max-w-md mx-auto px-2">
+            Каждый день — шаг к лучшей версии себя
           </p>
-          {habits.length > 0 && (
-            <div className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-full shadow-sm">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Всего привычек: <span className="font-bold text-blue-600">{habits.length}</span>
-                {(() => {
-                  const isPremium = subscriptionStatus?.subscriptionStatus === 'active' && 
-                                   subscriptionStatus?.subscriptionExpiresAt && 
-                                   new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
-                                   (subscriptionStatus?.daysRemaining || 0) > 0
-                  return isPremium ? ' из ∞' : ` из 3`
-                })()}
-              </span>
-            </div>
-          )}
+          {/* Счётчик привычек с визуальным акцентом */}
+          <div className="mt-4 inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-md border border-gray-200/60 dark:border-gray-700/60">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {habitsCountLabel}
+              {isPremium && <span className="text-indigo-600 dark:text-indigo-400 font-semibold"> / ∞</span>}
+            </span>
+          </div>
         </header>
 
         {error && (
@@ -283,10 +286,7 @@ function App() {
                 onUpdate={handleHabitUpdate}
                 onComplete={handleHabitComplete}
                 onDelete={handleHabitDelete}
-                isPremium={!!(subscriptionStatus?.subscriptionStatus === 'active' && 
-                          subscriptionStatus?.subscriptionExpiresAt && 
-                          new Date(subscriptionStatus.subscriptionExpiresAt) > new Date() &&
-                          (subscriptionStatus?.daysRemaining || 0) > 0)}
+                isPremium={isPremium}
                 onScrollToSubscription={() => {
                   setTimeout(() => {
                     const updateButton = document.querySelector('[data-update-subscription-button]')

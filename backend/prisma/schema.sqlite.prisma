@@ -23,12 +23,16 @@ model User {
 
 // Привычка пользователя
 model Habit {
-  id          String   @id @default(cuid())
-  userId      String
-  name        String   // Название привычки
-  description String?  // Опциональное описание
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String
+  name           String   // Название привычки
+  description    String?  // Опциональное описание
+  goalEnabled    Boolean  @default(false)
+  goalType       String?
+  goalTarget     Int?
+  goalPeriodDays Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs   HabitLog[]
