@@ -155,7 +155,7 @@ export default function ReminderBottomSheet({
                 type="time"
                 value={time}
                 onChange={(e) => onTimeChange(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200"
+                className="w-[7rem] max-w-full px-3 py-2 text-base border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 [&::-webkit-datetime-edit]:text-center"
               />
             </div>
           )}
