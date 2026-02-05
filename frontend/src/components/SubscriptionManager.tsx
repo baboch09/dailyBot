@@ -215,9 +215,17 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
               <button
                 data-update-subscription-button
                 onClick={togglePlans}
-                className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-white/95 text-indigo-600 hover:bg-white active:scale-95 shadow-sm"
+                className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all bg-white/95 text-indigo-600 hover:bg-white active:scale-95 shadow-sm flex items-center gap-2"
               >
-                Продлить
+                <span>Продлить</span>
+                <svg
+                  className={`w-4 h-4 flex-shrink-0 transition-transform duration-300 ${showPlans ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
             ) : (
               <button
@@ -240,13 +248,13 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
         </div>
       </div>
 
-      {/* Анимированный блок с тарифами */}
+      {/* Анимированный блок с тарифами — высота по экрану, контент с прокруткой */}
       <div className={`subscription-plans-container overflow-hidden transition-all duration-300 ease-in-out ${
         showPlans 
-          ? 'max-h-[800px] opacity-100 mb-4' 
+          ? 'max-h-[min(800px,90vh)] opacity-100 mb-4' 
           : 'max-h-0 opacity-0 mb-0'
       }`}>
-        <div className={`transform transition-transform duration-300 ${
+        <div className={`h-full overflow-y-auto transition-transform duration-300 ${
           showPlans ? 'translate-y-0' : '-translate-y-4'
         }`}>
           <SubscriptionPlans 

@@ -12,12 +12,12 @@ interface SubscriptionPlansProps {
 type PlanTab = 'month' | 'year' | 'lifetime'
 
 const PRO_BENEFITS = [
-  { icon: '∞', label: '∞ привычек' },
-  { icon: '🔔', label: 'Напоминания' },
-  { icon: '📊', label: 'Аналитика' },
-  { icon: '🎯', label: 'Цели' },
-  { icon: '🎨', label: 'Темы' },
-  { icon: '🤖', label: 'Умные советы' }
+  { icon: '🚀', title: 'Без ограничений', description: 'Сколько угодно привычек' },
+  { icon: '🔔', title: 'Умные напоминания', description: 'По времени и интервалам' },
+  { icon: '📊', title: 'Аналитика прогресса', description: 'Следи за результатом' },
+  { icon: '🎯', title: 'Цели и челленджи', description: '21 / 30 / 90 дней' },
+  { icon: '🎨', title: 'Персонализация', description: 'Темы и иконки' },
+  { icon: '🤖', title: 'Умный помощник', description: 'Советы и подсказки' }
 ]
 
 export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlansProps) {
@@ -199,17 +199,22 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
               )}
             </div>
 
-            {/* Преимущества PRO */}
-            <div className="space-y-2">
+            {/* Преимущества PRO — двухстрочный премиальный формат */}
+            <div className="space-y-3">
               {PRO_BENEFITS.map((item) => (
                 <div
-                  key={item.label}
-                  className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px]"
+                  key={item.title}
+                  className="flex gap-4 p-4 sm:p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[16px] border border-blue-100/50 dark:border-blue-800/30"
                 >
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                    ✔️ {item.label}
-                  </span>
+                  <span className="text-2xl flex-shrink-0 leading-none" aria-hidden>{item.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5 leading-snug">
+                      {item.description}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
