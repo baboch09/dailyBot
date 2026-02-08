@@ -139,6 +139,7 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
   }
 
   const isActive = status?.subscriptionStatus === 'active' && (status?.daysRemaining || 0) > 0
+  const isLifetime = isActive && (status?.daysRemaining || 0) > 365 // lifetime plan = 36525 days
   const subscriptionLevel = isActive ? 'Premium' : 'Free'
 
   // Автоматически закрываем панель тарифов, если подписка активировалась
@@ -201,7 +202,7 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
               </div>
               {isActive && status?.daysRemaining != null ? (
                 <p className="text-sm text-white/85 mt-0.5">
-                  Осталось {status.daysRemaining} {status.daysRemaining === 1 ? 'день' : status.daysRemaining < 5 ? 'дня' : 'дней'}
+                  {isLifetime ? 'Навсегда' : `Осталось ${status.daysRemaining} ${status.daysRemaining === 1 ? 'день' : status.daysRemaining < 5 ? 'дня' : 'дней'}`}
                 </p>
               ) : !isActive && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
@@ -211,7 +212,7 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
             </div>
           </div>
           <div className="flex-shrink-0">
-            {isActive ? (
+            {isActive && !isLifetime ? (
               <button
                 data-update-subscription-button
                 onClick={togglePlans}
@@ -227,7 +228,7 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-            ) : (
+            ) : !isActive ? (
               <button
                 data-update-subscription-button
                 onClick={togglePlans}
@@ -243,7 +244,7 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
