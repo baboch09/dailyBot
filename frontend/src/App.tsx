@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { track } from '@vercel/analytics'
 import { getWebApp } from './utils/telegram'
-import { Habit, SubscriptionStatus } from './types'
+import { Habit, SubscriptionStatus as SubscriptionStatusType } from './types'
 import { habitsApi, subscriptionApi } from './services/api'
 import HabitItem from './components/HabitItem'
 import AddHabitForm from './components/AddHabitForm'
@@ -13,7 +13,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const subscriptionRef = useRef<HTMLDivElement>(null)
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
+  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatusType | null>(null)
   const [subscriptionRefreshing, setSubscriptionRefreshing] = useState(false)
 
   // Инициализация Telegram WebApp
