@@ -156,7 +156,7 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
       </div>
 
       {/* Контент тарифа Месяц/Год */}
-      <div className="p-6 rounded-b-[24px]">
+      <div className="p-6 rounded-b-[24px] bg-white dark:bg-gray-800">
         {(activeTab === 'month' && monthPlan) || (activeTab === 'year' && yearPlan) ? (
           <div className="space-y-6">
             <div className="text-center">
