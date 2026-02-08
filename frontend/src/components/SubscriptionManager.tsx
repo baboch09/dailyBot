@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import SubscriptionStatus from './SubscriptionStatus'
 import SubscriptionPlans from './SubscriptionPlans'
 import { subscriptionApi } from '../services/api'
 import type { SubscriptionStatus as SubscriptionStatusType } from '../types'
@@ -264,9 +263,6 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
           />
         </div>
       </div>
-
-      {/* История платежей - показываем внизу */}
-      <SubscriptionStatus onStatusUpdate={loadStatus} />
     </div>
   )
 }

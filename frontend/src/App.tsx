@@ -6,6 +6,7 @@ import { habitsApi, subscriptionApi } from './services/api'
 import HabitItem from './components/HabitItem'
 import AddHabitForm from './components/AddHabitForm'
 import SubscriptionManager from './components/SubscriptionManager'
+import SubscriptionStatus from './components/SubscriptionStatus'
 
 function App() {
   const [habits, setHabits] = useState<Habit[]>([])
@@ -300,6 +301,9 @@ function App() {
             ))}
           </div>
         )}
+
+        {/* История платежей — внизу под списком привычек */}
+        <SubscriptionStatus />
       </div>
     </div>
   )
