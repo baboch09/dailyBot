@@ -6,12 +6,15 @@ import { habitsApi, subscriptionApi } from './services/api'
 import HabitItem from './components/HabitItem'
 import AddHabitForm from './components/AddHabitForm'
 import SubscriptionManager from './components/SubscriptionManager'
-import SubscriptionStatus from './components/SubscriptionStatus'
+import MoreTab from './components/MoreTab'
+
+type AppTab = 'habits' | 'more'
 
 function App() {
   const [habits, setHabits] = useState<Habit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState<AppTab>('habits')
   const subscriptionRef = useRef<HTMLDivElement>(null)
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatusType | null>(null)
   const [subscriptionRefreshing, setSubscriptionRefreshing] = useState(false)
@@ -222,89 +225,124 @@ function App() {
   const habitsCountLabel = `Привычек: ${habits.length} из ${habitsLimitLabel}`
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 pb-24">
       <div className="max-w-2xl mx-auto">
-        {/* Верхний блок: иконка, заголовок, подзаголовок */}
-        <header className="mb-6 text-center pt-2 sm:pt-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[24px] sm:rounded-[28px] mb-3 sm:mb-4 shadow-lg ring-2 ring-white/20 dark:ring-gray-800/50">
-            <span className="text-2xl sm:text-3xl" aria-hidden>✨</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-1.5 sm:mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
-            Трекер привычек
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg max-w-md mx-auto px-2">
-            Каждый день — шаг к лучшей версии себя
-          </p>
-          {/* Счётчик привычек с визуальным акцентом */}
-          <div className="mt-4 inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-md border border-gray-200/60 dark:border-gray-700/60">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {habitsCountLabel}
-            </span>
-          </div>
-        </header>
+        {activeTab === 'habits' && (
+          <>
+            {/* Верхний блок: иконка, заголовок, подзаголовок */}
+            <header className="mb-6 text-center pt-2 sm:pt-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[24px] sm:rounded-[28px] mb-3 sm:mb-4 shadow-lg ring-2 ring-white/20 dark:ring-gray-800/50">
+                <span className="text-2xl sm:text-3xl" aria-hidden>✨</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-bold mb-1.5 sm:mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
+                Трекер привычек
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 text-base sm:text-lg max-w-md mx-auto px-2">
+                Каждый день — шаг к лучшей версии себя
+              </p>
+              {/* Счётчик привычек с визуальным акцентом */}
+              <div className="mt-4 inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-full shadow-md border border-gray-200/60 dark:border-gray-700/60">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {habitsCountLabel}
+                </span>
+              </div>
+            </header>
 
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-[20px] shadow-sm">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">⚠️</span>
-              <p className="text-red-700 dark:text-red-300 font-medium">{error}</p>
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-[20px] shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">⚠️</span>
+                  <p className="text-red-700 dark:text-red-300 font-medium">{error}</p>
+                </div>
+              </div>
+            )}
+
+            <div ref={subscriptionRef}>
+              <SubscriptionManager externalLoading={subscriptionRefreshing} />
             </div>
-          </div>
+
+            <AddHabitForm 
+              onSuccess={handleHabitUpdate}
+              habitsCount={habits.length}
+              onScrollToSubscription={() => {
+                subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+            />
+
+            {habits.length === 0 ? (
+              <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[32px] shadow-xl p-12 text-center border border-gray-100 dark:border-gray-700">
+                <div className="text-6xl mb-4">🎯</div>
+                <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
+                  Начните свой путь к успеху
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-1">
+                  У вас пока нет привычек
+                </p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  Добавьте свою первую привычку, чтобы начать отслеживать прогресс
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {habits.map((habit) => (
+                  <HabitItem
+                    key={habit.id}
+                    habit={habit}
+                    onUpdate={handleHabitUpdate}
+                    onComplete={handleHabitComplete}
+                    onDelete={handleHabitDelete}
+                    isPremium={isPremium}
+                    onScrollToSubscription={() => {
+                      setTimeout(() => {
+                        const updateButton = document.querySelector('[data-update-subscription-button]')
+                        if (updateButton) {
+                          updateButton.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        } else {
+                          subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }
+                      }, 100)
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        <div ref={subscriptionRef}>
-          <SubscriptionManager externalLoading={subscriptionRefreshing} />
-        </div>
-
-        <AddHabitForm 
-          onSuccess={handleHabitUpdate}
-          habitsCount={habits.length}
-          onScrollToSubscription={() => {
-            subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          }}
-        />
-
-        {habits.length === 0 ? (
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-[32px] shadow-xl p-12 text-center border border-gray-100 dark:border-gray-700">
-            <div className="text-6xl mb-4">🎯</div>
-            <h3 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-2">
-              Начните свой путь к успеху
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-1">
-              У вас пока нет привычек
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500">
-              Добавьте свою первую привычку, чтобы начать отслеживать прогресс
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {habits.map((habit) => (
-              <HabitItem
-                key={habit.id}
-                habit={habit}
-                onUpdate={handleHabitUpdate}
-                onComplete={handleHabitComplete}
-                onDelete={handleHabitDelete}
-                isPremium={isPremium}
-                onScrollToSubscription={() => {
-                  setTimeout(() => {
-                    const updateButton = document.querySelector('[data-update-subscription-button]')
-                    if (updateButton) {
-                      updateButton.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    } else {
-                      subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                    }
-                  }, 100)
-                }}
-              />
-            ))}
-          </div>
+        {activeTab === 'more' && (
+          <MoreTab isPremium={isPremium} />
         )}
-
-        {/* История платежей — внизу под списком привычек */}
-        <SubscriptionStatus />
       </div>
+
+      {/* Нижняя навигация */}
+      <nav className="fixed bottom-0 left-0 right-0 max-w-2xl mx-auto border-t border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
+        <div className="flex">
+          <button
+            type="button"
+            onClick={() => setActiveTab('habits')}
+            className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+              activeTab === 'habits'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <span className="text-xl" aria-hidden>✨</span>
+            <span className="text-xs font-medium">Привычки</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('more')}
+            className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
+              activeTab === 'more'
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+          >
+            <span className="text-xl" aria-hidden>⋯</span>
+            <span className="text-xs font-medium">Ещё</span>
+          </button>
+        </div>
+      </nav>
     </div>
   )
 }
