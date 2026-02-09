@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import SubscriptionStatus from './SubscriptionStatus'
+import Personalization from './Personalization'
 
 interface MoreTabProps {
   isPremium: boolean
@@ -24,11 +26,17 @@ const PRO_FEATURES = [
     icon: '🎨',
     title: 'Персонализация',
     description: 'Темы, иконки и оформление',
-    soon: true
+    soon: false
   }
 ]
 
 export default function MoreTab({ isPremium }: MoreTabProps) {
+  const [view, setView] = useState<'list' | 'personalization'>('list')
+
+  if (view === 'personalization') {
+    return <Personalization onBack={() => setView('list')} />
+  }
+
   return (
     <div className="space-y-6">
       <header className="text-center pt-2 pb-2">
@@ -46,6 +54,7 @@ export default function MoreTab({ isPremium }: MoreTabProps) {
           <button
             key={feature.id}
             type="button"
+            onClick={() => feature.id === 'personalization' && setView('personalization')}
             className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all text-left disabled:opacity-70"
           >
             <span className="flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 flex items-center justify-center text-2xl">
