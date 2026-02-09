@@ -310,7 +310,15 @@ function App() {
         )}
 
         {activeTab === 'more' && (
-          <MoreTab isPremium={isPremium} />
+          <MoreTab
+            isPremium={isPremium}
+            onUpgradeClick={() => {
+              setActiveTab('habits')
+              setTimeout(() => {
+                subscriptionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }, 150)
+            }}
+          />
         )}
       </div>
 

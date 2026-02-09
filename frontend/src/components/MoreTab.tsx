@@ -4,6 +4,7 @@ import Personalization from './Personalization'
 
 interface MoreTabProps {
   isPremium: boolean
+  onUpgradeClick?: () => void
 }
 
 const PRO_FEATURES = [
@@ -30,11 +31,17 @@ const PRO_FEATURES = [
   }
 ]
 
-export default function MoreTab({ isPremium }: MoreTabProps) {
+export default function MoreTab({ isPremium, onUpgradeClick }: MoreTabProps) {
   const [view, setView] = useState<'list' | 'personalization'>('list')
 
   if (view === 'personalization') {
-    return <Personalization onBack={() => setView('list')} />
+    return (
+      <Personalization
+        onBack={() => setView('list')}
+        isPremium={isPremium}
+        onUpgradeClick={onUpgradeClick}
+      />
+    )
   }
 
   return (
