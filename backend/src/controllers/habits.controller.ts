@@ -3,32 +3,10 @@ import prisma from '../utils/prisma'
 import { calculateStreak, isCompletedToday } from '../utils/streak'
 import { validationResult } from 'express-validator'
 import { FREE_HABITS_LIMIT } from '../middleware/subscription'
+import { getStartOfTodayUTC, getStartOfTomorrowUTC, getStartOfPreviousDayUTC, normalizeLogDateToDay, formatDateInTimezone } from '../utils/timezone'
 
-/**
- * Нормализует дату к началу дня в UTC
- */
-function normalizeToStartOfDay(date: Date): Date {
-  const normalized = new Date(date)
-  normalized.setUTCHours(0, 0, 0, 0)
-  return normalized
-}
-
-/**
- * Получает начало следующего дня в UTC
- */
-function getNextDay(date: Date): Date {
-  const next = new Date(date)
-  next.setUTCDate(next.getUTCDate() + 1)
-  return next
-}
-
-/**
- * Получает начало предыдущего дня в UTC
- */
-function getPreviousDay(date: Date): Date {
-  const prev = new Date(date)
-  prev.setUTCDate(prev.getUTCDate() - 1)
-  return prev
+function getUserTimezone(user: { timezone?: string | null }): string {
+  return user?.timezone || 'UTC+3'
 }
 
 /**
@@ -42,6 +20,7 @@ export async function getHabits(req: Request, res: Response) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
     }
 
+    const timezone = getUserTimezone(user)
     const habits = await prisma.habit.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: 'desc' },
@@ -53,21 +32,16 @@ export async function getHabits(req: Request, res: Response) {
       }
     })
 
-    const today = normalizeToStartOfDay(new Date())
-    const tomorrow = getNextDay(today)
+    const today = getStartOfTodayUTC(timezone)
+    const tomorrow = getStartOfTomorrowUTC(timezone)
 
     // Добавляем streak и флаг выполнения за сегодня для каждой привычки
-    // Используем последовательную обработку вместо Promise.all для уменьшения нагрузки на БД
     const habitsWithStats = []
     for (const habit of habits) {
-      const streak = calculateStreakFromLogs(habit.logs, today)
+      const streak = calculateStreakFromLogs(habit.logs, today, timezone)
       const isCompletedToday = habit.logs.some(log => {
-        const logDate = new Date(log.date)
-        logDate.setUTCHours(0, 0, 0, 0)
-        logDate.setUTCMinutes(0, 0, 0)
-        logDate.setUTCSeconds(0, 0)
-        logDate.setUTCMilliseconds(0)
-        return logDate.getTime() === today.getTime()
+        const logDay = normalizeLogDateToDay(new Date(log.date), timezone)
+        return logDay.getTime() === today.getTime()
       })
 
       habitsWithStats.push({
@@ -95,50 +69,27 @@ export async function getHabits(req: Request, res: Response) {
 }
 
 /**
- * Вспомогательная функция для вычисления streak из логов (без запроса к БД)
+ * Вспомогательная функция для вычисления streak из логов (без запроса к БД).
+ * Использует часовой пояс пользователя для корректного определения "дня".
  */
-function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date): number {
+function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date, timezone: string): number {
   if (logs.length === 0) {
     return 0
   }
 
-  // Нормализуем даты логов к началу дня
-  const normalizedLogs = logs.map(log => {
-    const logDate = new Date(log.date)
-    logDate.setUTCHours(0, 0, 0, 0)
-    logDate.setUTCMinutes(0, 0, 0)
-    logDate.setUTCSeconds(0, 0)
-    logDate.setUTCMilliseconds(0)
-    return logDate
-  })
+  const normalizedLogs = logs.map(log => normalizeLogDateToDay(new Date(log.date), timezone))
 
-  // Проверяем, выполнена ли привычка в текущем периоде
   const todayLog = normalizedLogs.find(logDate => logDate.getTime() === today.getTime())
-
-  // Если в текущем периоде не выполнена, начинаем считать с предыдущего периода
-  // Если есть лог для текущего периода, streak начинается с 1, и мы проверяем предыдущий период
-  // Если нет лога для текущего периода, streak начинается с 0, и мы проверяем предыдущий период
-  let checkDate = getPreviousDay(today)
+  let checkDate = getStartOfPreviousDayUTC(today, timezone)
   let streak = todayLog ? 1 : 0
 
-  // Идём по логам и считаем последовательные дни
-  // Важно: normalizedLogs уже отсортированы по дате (от новых к старым)
-  // Если есть лог для текущего дня, начинаем со следующего лога (предыдущий день)
-  // Если нет лога для текущего дня, начинаем с первого лога (предыдущий день)
   const startIndex = todayLog ? 1 : 0
   for (let i = startIndex; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
-    
-    // Нормализуем checkDate перед сравнением
-    // checkDate уже должен быть нормализован через getPreviousDay, но нормализуем снова для уверенности
-    const normalizedCheckDate = normalizeToStartOfDay(checkDate)
-
-    // Сравниваем нормализованные даты
-    if (logDate.getTime() === normalizedCheckDate.getTime()) {
+    if (logDate.getTime() === checkDate.getTime()) {
       streak++
-      checkDate = getPreviousDay(normalizedCheckDate)
+      checkDate = getStartOfPreviousDayUTC(checkDate, timezone)
     } else {
-      // Если есть пропуск, прекращаем подсчёт
       break
     }
   }
@@ -242,8 +193,9 @@ export async function createHabit(req: Request, res: Response) {
       })
     })
 
-    const streak = await calculateStreak(habit.id)
-    const completedToday = await isCompletedToday(habit.id)
+    const timezone = getUserTimezone(user)
+    const streak = await calculateStreak(habit.id, timezone)
+    const completedToday = await isCompletedToday(habit.id, timezone)
 
     res.status(201).json({
       id: habit.id,
@@ -400,8 +352,9 @@ export async function updateHabit(req: Request, res: Response) {
       data: updateData
     })
 
-    const streak = await calculateStreak(habit.id)
-    const completedToday = await isCompletedToday(habit.id)
+    const timezone = getUserTimezone(user)
+    const streak = await calculateStreak(habit.id, timezone)
+    const completedToday = await isCompletedToday(habit.id, timezone)
 
     res.json({
       id: habit.id,
@@ -512,8 +465,9 @@ export async function completeHabitToday(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
-    const today = normalizeToStartOfDay(new Date())
-    const tomorrow = getNextDay(today)
+    const timezone = getUserTimezone(user)
+    const today = getStartOfTodayUTC(timezone)
+    const tomorrow = getStartOfTomorrowUTC(timezone)
 
     // Используем транзакцию для атомарной операции toggle
     // Это предотвращает race condition при одновременных запросах
@@ -579,7 +533,7 @@ export async function completeHabitToday(req: Request, res: Response) {
     console.log(`🔄 Recalculating streak after ${result.completed ? 'creating' : 'deleting'} log for habit ${id}`)
     console.log(`📅 Current period: ${today.toISOString()}`)
     console.log(`📅 Next period: ${tomorrow.toISOString()}`)
-    const streak = await calculateStreak(id)
+    const streak = await calculateStreak(id, timezone)
     console.log(`📊 Calculated streak for habit ${id}: ${streak}`)
     console.log(`✅ Habit ${id} completion result:`, { completed: result.completed, streak })
 
@@ -636,16 +590,11 @@ export async function getHabitStats(req: Request, res: Response) {
       return res.status(404).json({ error: 'Habit not found' })
     }
 
-    // Вычисляем дату 7 дней назад
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    sevenDaysAgo.setHours(0, 0, 0, 0)
+    const timezone = getUserTimezone(user)
+    const today = getStartOfTodayUTC(timezone)
+    const tomorrow = getStartOfTomorrowUTC(timezone)
+    const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(0, 0, 0, 0)
-
-    // Получаем все логи за последние 7 дней
     const logs = await prisma.habitLog.findMany({
       where: {
         habitId: id,
@@ -656,21 +605,13 @@ export async function getHabitStats(req: Request, res: Response) {
       }
     })
 
-    // Создаём массив для последних 7 дней
     const last7Days: Array<{ date: string; completed: boolean }> = []
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
-      date.setHours(0, 0, 0, 0)
-
-      const dateStr = date.toISOString().split('T')[0]
+      const dayStart = new Date(today.getTime() - i * 24 * 60 * 60 * 1000)
+      const dateStr = formatDateInTimezone(dayStart, timezone)
       const completed = logs.some(log => {
-        const logDate = new Date(log.date)
-        logDate.setHours(0, 0, 0, 0)
-        return logDate.getTime() === date.getTime()
+        const logDay = normalizeLogDateToDay(new Date(log.date), timezone)
+        return logDay.getTime() === dayStart.getTime()
       })
 
       last7Days.push({
@@ -679,7 +620,7 @@ export async function getHabitStats(req: Request, res: Response) {
       })
     }
 
-    const streak = await calculateStreak(id)
+    const streak = await calculateStreak(id, timezone)
 
     res.json({
       habitId: id,

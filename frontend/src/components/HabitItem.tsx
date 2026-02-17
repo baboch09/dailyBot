@@ -165,75 +165,6 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     return time
   }
 
-  // Определение стадии streak с разными визуальными состояниями
-  const getStreakStage = (streak: number) => {
-    if (streak === 0) {
-      return {
-        emoji: '',
-        label: 'Новая привычка',
-        gradient: 'from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600',
-        textColor: 'text-gray-600 dark:text-gray-400',
-        showBadge: false
-      }
-    } else if (streak >= 1 && streak < 3) {
-      return {
-        emoji: '🌱',
-        label: 'Это только начало',
-        gradient: 'from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30',
-        textColor: 'text-green-700 dark:text-green-300',
-        showBadge: true
-      }
-    } else if (streak >= 3 && streak < 7) {
-      return {
-        emoji: '🌿',
-        label: 'Набираешь обороты',
-        gradient: 'from-green-100 to-emerald-200 dark:from-green-900/30 dark:to-emerald-900/30',
-        textColor: 'text-green-700 dark:text-green-300',
-        showBadge: true
-      }
-    } else if (streak >= 7 && streak < 14) {
-      return {
-        emoji: '🔥',
-        label: 'Самое сложное позади',
-        gradient: 'from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30',
-        textColor: 'text-orange-700 dark:text-orange-300',
-        showBadge: true
-      }
-    } else if (streak >= 14 && streak < 21) {
-      return {
-        emoji: '🔥',
-        label: 'Ты просто зверь!',
-        gradient: 'from-orange-100 to-red-200 dark:from-orange-900/30 dark:to-red-900/30',
-        textColor: 'text-orange-700 dark:text-orange-300',
-        showBadge: true
-      }
-    } else if (streak >= 21 && streak < 66) {
-      return {
-        emoji: '⚡',
-        label: 'Сила воли твоё второе имя',
-        gradient: 'from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30',
-        textColor: 'text-blue-700 dark:text-blue-300',
-        showBadge: true
-      }
-    } else if (streak >= 66 && streak < 100) {
-      return {
-        emoji: '⭐',
-        label: 'Это уже не привычка, а так пустяк',
-        gradient: 'from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30',
-        textColor: 'text-purple-700 dark:text-purple-300',
-        showBadge: true
-      }
-    } else {
-      return {
-        emoji: '👑',
-        label: 'Легенда',
-        gradient: 'from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30',
-        textColor: 'text-yellow-700 dark:text-yellow-300',
-        showBadge: true
-      }
-    }
-  }
-
   // Таймер обратного отсчета для последних 30 минут перед напоминанием
   const [timeUntilReminder, setTimeUntilReminder] = useState<number | null>(null)
 
@@ -288,8 +219,6 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [showMenu])
-
-  const streakStage = getStreakStage(habit.streak)
 
   return (
     <div className={`group bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-[28px] shadow-lg [@media(hover:hover)]:hover:shadow-xl transition-all duration-300 border ${
@@ -511,22 +440,13 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   </p>
                 )}
 
-                {/* Напоминание — только для Premium; по клику открывается bottom sheet */}
+                {/* Напоминание — только для Premium; вариант C: только текст, без кнопки */}
                 {isPremium && (
-                  <button
-                    type="button"
-                    onClick={openReminderSheet}
-                    className="mb-2 w-full p-2.5 text-left bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-[14px] border border-blue-100 dark:border-blue-800 hover:opacity-90 transition-opacity"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">⏰</span>
-                      <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                        {habit.reminderEnabled && habit.reminderTime
-                          ? `Напоминание в ${formatTime(habit.reminderTime)}`
-                          : 'Напоминание отключено'}
-                      </p>
-                    </div>
-                  </button>
+                  <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+                    {habit.reminderEnabled && habit.reminderTime
+                      ? formatTime(habit.reminderTime)
+                      : '—'}
+                  </p>
                 )}
 
                 <ReminderBottomSheet
@@ -558,27 +478,37 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
               </div>
             )}
 
-            {/* Статистика и streak */}
-            <div className="flex items-center gap-3 mt-3">
-              {streakStage.showBadge && (
-                <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r ${streakStage.gradient} border border-opacity-20`}>
-                  <span className="text-xs">{streakStage.emoji}</span>
-                  <span className={`text-xs font-semibold ${streakStage.textColor}`}>
-                    {habit.streak} {habit.streak === 1 ? 'день' : habit.streak < 5 ? 'дня' : 'дней'}
-                  </span>
-                  <span className={`text-xs ${streakStage.textColor} opacity-75`}>
-                    {streakStage.label}
-                  </span>
-                </div>
-              )}
-              
+            {/* Прогресс: 7 секций по дням (1–7, 8–14, 15–21 и т.д.) */}
+            <div className="flex items-center gap-2 mt-3">
+              {(() => {
+                const baseDay = habit.streak === 0 ? 1 : Math.floor((habit.streak - 1) / 7) * 7 + 1
+                const filledCount = habit.streak === 0 ? 0 : habit.streak - baseDay + 1
+                return (
+                  <div className="flex gap-1">
+                    {[0, 1, 2, 3, 4, 5, 6].map((i) => {
+                      const dayNum = baseDay + i
+                      const isFilled = i < filledCount
+                      return (
+                        <div
+                          key={dayNum}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-colors ${
+                            isFilled
+                              ? 'bg-green-500 text-white dark:bg-green-500'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                          }`}
+                        >
+                          {dayNum}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
               {timeUntilReminder !== null && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-100 dark:border-orange-800">
-                  <span className="text-xs">⏰</span>
-                  <span className="text-xs font-semibold text-orange-700 dark:text-orange-300">
-                    {timeUntilReminder} {timeUntilReminder === 1 ? 'минута' : timeUntilReminder < 5 ? 'минуты' : 'минут'}
-                  </span>
-                </div>
+                <span className="text-xs font-medium text-orange-600 dark:text-orange-400 ml-1">
+                  {timeUntilReminder} мин
+                </span>
               )}
             </div>
           </div>

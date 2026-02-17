@@ -1,44 +1,13 @@
 import prisma from './prisma'
+import { getStartOfTodayUTC, getStartOfTomorrowUTC, getStartOfPreviousDayUTC, normalizeLogDateToDay } from './timezone'
+
+const DEFAULT_TIMEZONE = 'UTC+3'
 
 /**
- * Нормализует дату к началу дня в UTC
+ * Вычисляет streak (дней подряд) для привычки.
+ * Использует часовой пояс пользователя — день обновляется в полночь по местному времени (например, 00:00 МСК).
  */
-function normalizeToStartOfDay(date: Date): Date {
-  const normalized = new Date(date)
-  normalized.setUTCHours(0, 0, 0, 0)
-  return normalized
-}
-
-/**
- * Получает начало следующего дня в UTC
- */
-function getNextDay(date: Date): Date {
-  const next = new Date(date)
-  next.setUTCDate(next.getUTCDate() + 1)
-  return next
-}
-
-/**
- * Получает начало предыдущего дня в UTC
- */
-function getPreviousDay(date: Date): Date {
-  const prev = new Date(date)
-  prev.setUTCDate(prev.getUTCDate() - 1)
-  return prev
-}
-
-/**
- * Вычисляет streak (дней подряд) для привычки
- * 
- * Алгоритм:
- * 1. Получаем все логи привычки (отсортированные по дате)
- * 2. Нормализуем даты к началу дня в UTC
- * 3. Проверяем, есть ли лог за сегодня
- * 4. Идем по датам назад и считаем последовательные дни
- * 5. Прерываем подсчет при первом пропущенном дне
- */
-export async function calculateStreak(habitId: string): Promise<number> {
-  // Получаем все логи привычки, отсортированные по дате (от новых к старым)
+export async function calculateStreak(habitId: string, timezone: string = DEFAULT_TIMEZONE): Promise<number> {
   const logs = await prisma.habitLog.findMany({
     where: { habitId },
     orderBy: { date: 'desc' }
@@ -48,34 +17,23 @@ export async function calculateStreak(habitId: string): Promise<number> {
     return 0
   }
 
-  // Получаем текущий день (начало дня в UTC)
-  const today = normalizeToStartOfDay(new Date())
-
-  // Нормализуем даты логов к началу дня
-  const normalizedLogs = logs.map(log => normalizeToStartOfDay(new Date(log.date)))
-
-  // Проверяем, выполнена ли привычка сегодня
+  const today = getStartOfTodayUTC(timezone)
+  const normalizedLogs = logs.map(log => normalizeLogDateToDay(new Date(log.date), timezone))
   const hasTodayLog = normalizedLogs.some(logDate => logDate.getTime() === today.getTime())
 
-  // Если нет лога за сегодня, streak = 0
-  // Если есть лог за сегодня, начинаем с streak = 1 и проверяем предыдущие дни
   if (!hasTodayLog) {
     return 0
   }
 
   let streak = 1
-  let checkDate = getPreviousDay(today)
+  let checkDate = getStartOfPreviousDayUTC(today, timezone)
 
-  // Идем по логам, начиная со второго (первый - это сегодняшний)
   for (let i = 1; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
-
     if (logDate.getTime() === checkDate.getTime()) {
-      // Нашли лог за ожидаемый день - увеличиваем streak
       streak++
-      checkDate = getPreviousDay(checkDate)
+      checkDate = getStartOfPreviousDayUTC(checkDate, timezone)
     } else {
-      // Пропущен день - прерываем подсчет
       break
     }
   }
@@ -84,11 +42,11 @@ export async function calculateStreak(habitId: string): Promise<number> {
 }
 
 /**
- * Проверяет, выполнена ли привычка сегодня
+ * Проверяет, выполнена ли привычка сегодня (в часовом поясе пользователя)
  */
-export async function isCompletedToday(habitId: string): Promise<boolean> {
-  const today = normalizeToStartOfDay(new Date())
-  const tomorrow = getNextDay(today)
+export async function isCompletedToday(habitId: string, timezone: string = DEFAULT_TIMEZONE): Promise<boolean> {
+  const today = getStartOfTodayUTC(timezone)
+  const tomorrow = getStartOfTomorrowUTC(timezone)
 
   const log = await prisma.habitLog.findFirst({
     where: {
