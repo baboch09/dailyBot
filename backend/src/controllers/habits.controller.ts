@@ -71,6 +71,7 @@ export async function getHabits(req: Request, res: Response) {
 /**
  * Вспомогательная функция для вычисления streak из логов (без запроса к БД).
  * Использует часовой пояс пользователя для корректного определения "дня".
+ * Streak = последовательные дни, включая последний лог (даже если сегодня не отмечено).
  */
 function calculateStreakFromLogs(logs: Array<{ date: Date }>, today: Date, timezone: string): number {
   if (logs.length === 0) {

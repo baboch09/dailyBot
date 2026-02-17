@@ -440,12 +440,10 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   </p>
                 )}
 
-                {/* Напоминание — только для Premium; вариант C: только текст, без кнопки */}
-                {isPremium && (
+                {/* Напоминание — только для Premium; вариант C: только текст; если выкл — не показываем */}
+                {isPremium && habit.reminderEnabled && habit.reminderTime && (
                   <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                    {habit.reminderEnabled && habit.reminderTime
-                      ? formatTime(habit.reminderTime)
-                      : '—'}
+                    {formatTime(habit.reminderTime)}
                   </p>
                 )}
 
@@ -478,11 +476,26 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
               </div>
             )}
 
-            {/* Прогресс: 7 секций по дням (1–7, 8–14, 15–21 и т.д.) */}
+            {/* Прогресс: 7 секций по дням (1–7, 8–14, 15–21 и т.д.); градиент внутри недели, разный цвет по неделям */}
             <div className="flex items-center gap-2 mt-3">
               {(() => {
-                const baseDay = habit.streak === 0 ? 1 : Math.floor((habit.streak - 1) / 7) * 7 + 1
-                const filledCount = habit.streak === 0 ? 0 : habit.streak - baseDay + 1
+                const streak = Number(habit.streak) || 0
+                const baseDay = streak === 0 ? 1 : Math.floor((streak - 1) / 7) * 7 + 1
+                const filledCount = streak === 0 ? 0 : streak - baseDay + 1
+                const weekIndex = Math.floor((baseDay - 1) / 7)
+                const weekPalette: Record<number, string[]> = {
+                  0: ['bg-emerald-300 dark:bg-emerald-600', 'bg-emerald-400 dark:bg-emerald-500', 'bg-emerald-500 dark:bg-emerald-400', 'bg-emerald-600 dark:bg-emerald-300'],
+                  1: ['bg-blue-300 dark:bg-blue-600', 'bg-blue-400 dark:bg-blue-500', 'bg-blue-500 dark:bg-blue-400', 'bg-blue-600 dark:bg-blue-300'],
+                  2: ['bg-violet-300 dark:bg-violet-600', 'bg-violet-400 dark:bg-violet-500', 'bg-violet-500 dark:bg-violet-400', 'bg-violet-600 dark:bg-violet-300'],
+                  3: ['bg-amber-300 dark:bg-amber-600', 'bg-amber-400 dark:bg-amber-500', 'bg-amber-500 dark:bg-amber-400', 'bg-amber-600 dark:bg-amber-300']
+                }
+                const palette = weekPalette[weekIndex % 4] ?? weekPalette[0]
+                const getFilledClass = (index: number) => {
+                  if (filledCount <= 1) return palette[3]
+                  const t = index / (filledCount - 1)
+                  const level = Math.round(t * 3)
+                  return palette[Math.min(level, 3)]
+                }
                 return (
                   <div className="flex gap-1">
                     {[0, 1, 2, 3, 4, 5, 6].map((i) => {
@@ -491,9 +504,9 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                       return (
                         <div
                           key={dayNum}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-colors ${
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold transition-colors text-white ${
                             isFilled
-                              ? 'bg-green-500 text-white dark:bg-green-500'
+                              ? getFilledClass(i)
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                           }`}
                         >
