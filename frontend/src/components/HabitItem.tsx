@@ -165,42 +165,33 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     return time
   }
 
-  // Таймер обратного отсчета для последних 30 минут перед напоминанием
-  const [timeUntilReminder, setTimeUntilReminder] = useState<number | null>(null)
+  // Таймер до конца дня (обнуление прогресса). Для теста показываем всегда.
+  const [timeUntilReset, setTimeUntilReset] = useState<{ hours: number; minutes: number } | null>(null)
 
   useEffect(() => {
-    if (!habit.reminderTime || !habit.reminderEnabled || habit.isCompletedToday || !isPremium) {
-      setTimeUntilReminder(null)
+    if (habit.isCompletedToday) {
+      setTimeUntilReset(null)
       return
     }
 
-    const calculateTimeUntilReminder = () => {
+    const calculateTimeUntilEndOfDay = () => {
       const now = new Date()
-      const [hours, minutes] = habit.reminderTime!.split(':').map(Number)
-      const reminderTime = new Date()
-      reminderTime.setHours(hours, minutes, 0, 0)
-      
-      // Если время напоминания уже прошло сегодня, берем завтра
-      if (reminderTime < now) {
-        reminderTime.setDate(reminderTime.getDate() + 1)
-      }
+      const endOfDay = new Date(now)
+      endOfDay.setDate(endOfDay.getDate() + 1)
+      endOfDay.setHours(0, 0, 0, 0) // полночь = сброс прогресса
 
-      const diff = reminderTime.getTime() - now.getTime()
-      const diffMinutes = Math.floor(diff / (1000 * 60))
-      
-      // Показываем таймер только в последние 30 минут
-      if (diffMinutes <= 30 && diffMinutes > 0) {
-        setTimeUntilReminder(diffMinutes)
-      } else {
-        setTimeUntilReminder(null)
-      }
+      const diff = endOfDay.getTime() - now.getTime()
+      const totalMinutes = Math.max(0, Math.floor(diff / (1000 * 60)))
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      setTimeUntilReset({ hours, minutes })
     }
 
-    calculateTimeUntilReminder()
-    const interval = setInterval(calculateTimeUntilReminder, 1000 * 60) // Обновляем каждую минуту
+    calculateTimeUntilEndOfDay()
+    const interval = setInterval(calculateTimeUntilEndOfDay, 1000 * 60) // Обновляем каждую минуту
 
     return () => clearInterval(interval)
-  }, [habit.reminderTime, habit.reminderEnabled, habit.isCompletedToday, isPremium])
+  }, [habit.isCompletedToday])
 
   // Закрываем меню при клике вне его
   useEffect(() => {
@@ -518,9 +509,9 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                 )
               })()}
 
-              {timeUntilReminder !== null && (
+              {timeUntilReset !== null && (
                 <span className="text-xs font-medium text-orange-600 dark:text-orange-400 ml-1">
-                  {timeUntilReminder} мин
+                  До сброса: {timeUntilReset.hours} ч {timeUntilReset.minutes} мин
                 </span>
               )}
             </div>
