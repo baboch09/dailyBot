@@ -165,7 +165,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     return time
   }
 
-  // Таймер до конца дня (обнуление прогресса). Для теста показываем всегда.
+  // Таймер до конца дня (обнуление прогресса). Показываем только в последние 30 минут.
   const [timeUntilReset, setTimeUntilReset] = useState<{ hours: number; minutes: number } | null>(null)
 
   useEffect(() => {
@@ -182,9 +182,14 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
 
       const diff = endOfDay.getTime() - now.getTime()
       const totalMinutes = Math.max(0, Math.floor(diff / (1000 * 60)))
-      const hours = Math.floor(totalMinutes / 60)
-      const minutes = totalMinutes % 60
-      setTimeUntilReset({ hours, minutes })
+      // Показываем таймер только в последние 30 минут до полуночи
+      if (totalMinutes <= 30 && totalMinutes > 0) {
+        const hours = Math.floor(totalMinutes / 60)
+        const minutes = totalMinutes % 60
+        setTimeUntilReset({ hours, minutes })
+      } else {
+        setTimeUntilReset(null)
+      }
     }
 
     calculateTimeUntilEndOfDay()
@@ -508,13 +513,13 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   </div>
                 )
               })()}
-
-              {timeUntilReset !== null && (
-                <span className="text-xs font-medium text-orange-600 dark:text-orange-400 ml-1">
-                  До сброса: {timeUntilReset.hours} ч {timeUntilReset.minutes} мин
-                </span>
-              )}
             </div>
+
+            {timeUntilReset !== null && (
+              <p className="mt-2 text-xs font-medium text-red-600 dark:text-red-400">
+                До сброса: {timeUntilReset.hours} ч {timeUntilReset.minutes} мин
+              </p>
+            )}
           </div>
         </div>
       </div>
