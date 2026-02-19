@@ -63,8 +63,8 @@ export default function ReminderBottomSheet({
   onReminderDaysChange,
   onSave,
   isSaving = false,
-  isPremium,
-  onRequestPro
+  isPremium: _isPremium,
+  onRequestPro: _onRequestPro
 }: ReminderBottomSheetProps) {
   const selectedDays = parseReminderDays(reminderDays)
 

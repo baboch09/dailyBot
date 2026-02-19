@@ -160,11 +160,6 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     }
   }
 
-  const formatTime = (time: string | null | undefined) => {
-    if (!time) return null
-    return time
-  }
-
   const formatReminderPreview = (): string | null => {
     if (!habit.reminderTime) return null
     const days = habit.reminderDays?.trim()
