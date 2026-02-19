@@ -31,8 +31,8 @@ export const createHabitValidation: ValidationChain[] = [
     .trim()
     .custom((value) => {
       if (value === '' || value === null || value === undefined) return true
-      const parts = value.split(',').map((s) => parseInt(s.trim(), 10))
-      if (parts.some((n) => isNaN(n) || n < 1 || n > 7)) {
+      const parts = (value as string).split(',').map((s: string) => parseInt(s.trim(), 10))
+      if (parts.some((n: number) => isNaN(n) || n < 1 || n > 7)) {
         throw new Error('reminderDays: только цифры 1–7 через запятую (1=Пн, 7=Вс)')
       }
       return true
@@ -79,8 +79,8 @@ export const updateHabitValidation: ValidationChain[] = [
     .trim()
     .custom((value) => {
       if (value === '' || value === null || value === undefined) return true
-      const parts = value.split(',').map((s) => parseInt(s.trim(), 10))
-      if (parts.some((n) => isNaN(n) || n < 1 || n > 7)) {
+      const parts = (value as string).split(',').map((s: string) => parseInt(s.trim(), 10))
+      if (parts.some((n: number) => isNaN(n) || n < 1 || n > 7)) {
         throw new Error('reminderDays: только цифры 1–7 через запятую (1=Пн, 7=Вс)')
       }
       return true
