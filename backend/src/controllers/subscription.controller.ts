@@ -219,12 +219,8 @@ export async function createSubscriptionPayment(req: Request, res: Response) {
       throw new Error('TELEGRAM_BOT_USERNAME не установлен. Установите в переменных окружения.')
     }
     
-    // ВАРИАНТ 1: Если у вас есть Web App short name в BotFather
-    // const webAppShortName = 'app' // Замените на ваш short name
-    // const returnUrl = `https://t.me/${botUsername}/${webAppShortName}?startapp=payment_return`
-    
-    // ВАРИАНТ 2: Через промежуточную страницу (работает всегда)
-    const returnUrl = `${webAppUrl}/payment-return.html?bot=${encodeURIComponent(botUsername)}`
+    // Возврат после оплаты — сразу в бота
+    const returnUrl = `https://t.me/${botUsername}`
 
     console.log('💳 Payment return URL:', returnUrl)
     console.log('   Bot username:', botUsername)
