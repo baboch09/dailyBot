@@ -231,8 +231,14 @@ function App() {
           <>
             {/* Верхний блок: иконка, заголовок, подзаголовок */}
             <header className="mb-6 text-center pt-2 sm:pt-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[24px] sm:rounded-[28px] mb-3 sm:mb-4 shadow-lg ring-2 ring-white/20 dark:ring-gray-800/50">
-                <span className="text-2xl sm:text-3xl" aria-hidden>✨</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-[24px] sm:rounded-[28px] mb-3 sm:mb-4 shadow-lg ring-2 ring-white/20 dark:ring-gray-800/50 overflow-hidden bg-white">
+                <img
+                  src="/app-icon.png"
+                  alt=""
+                  className="w-full h-full object-cover"
+                  width={80}
+                  height={80}
+                />
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-1.5 sm:mb-2 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight">
                 Трекер привычек
