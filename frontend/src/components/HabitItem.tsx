@@ -74,7 +74,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
     setIsDeleting(true)
     try {
       await habitsApi.delete(habit.id)
-      // Вызываем onUpdate вместо onDelete для перезагрузки списка
+      onDelete?.(habit.id)
       onUpdate()
     } catch (error: any) {
       console.error('Error deleting habit:', error)
@@ -446,8 +446,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
               </>
             )}
 
-            {/* Цель: превью прогресса (PRO) */}
-            {habit.goalEnabled && habit.goalType === 'streak' && habit.goalTarget != null && (
+            {/* Цель: превью прогресса (только для PRO) */}
+            {isPremium && habit.goalEnabled && habit.goalType === 'streak' && habit.goalTarget != null && (
               <div className="mb-2 p-2.5 rounded-[14px] bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800">
                 <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
                   🎯 {habit.goalTarget} {habit.goalTarget === 1 ? 'день' : habit.goalTarget < 5 ? 'дня' : 'дней'} подряд — {Math.min(habit.streak, habit.goalTarget)}/{habit.goalTarget} выполнено

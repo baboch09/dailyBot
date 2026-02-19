@@ -138,7 +138,7 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
               : 'text-gray-500 dark:text-gray-500 opacity-60 hover:opacity-80'
           }`}
         >
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden />
           <span className="flex items-center justify-center gap-2 flex-wrap">
             Год
             {savings > 0 && (
