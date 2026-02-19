@@ -26,6 +26,17 @@ export const createHabitValidation: ValidationChain[] = [
       return true
     }),
   body('reminderEnabled').optional().isBoolean().withMessage('reminderEnabled должен быть boolean'),
+  body('reminderDays')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .custom((value) => {
+      if (value === '' || value === null || value === undefined) return true
+      const parts = value.split(',').map((s) => parseInt(s.trim(), 10))
+      if (parts.some((n) => isNaN(n) || n < 1 || n > 7)) {
+        throw new Error('reminderDays: только цифры 1–7 через запятую (1=Пн, 7=Вс)')
+      }
+      return true
+    }),
   body('goalEnabled').optional().isBoolean().withMessage('goalEnabled должен быть boolean'),
   body('goalType').optional().trim().isIn(['streak']).withMessage('goalType: только streak (серия дней)'),
   body('goalTarget').optional().isInt({ min: 1, max: 365 }).withMessage('goalTarget от 1 до 365'),
@@ -63,6 +74,17 @@ export const updateHabitValidation: ValidationChain[] = [
       return true
     }),
   body('reminderEnabled').optional().isBoolean().withMessage('reminderEnabled должен быть boolean'),
+  body('reminderDays')
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .custom((value) => {
+      if (value === '' || value === null || value === undefined) return true
+      const parts = value.split(',').map((s) => parseInt(s.trim(), 10))
+      if (parts.some((n) => isNaN(n) || n < 1 || n > 7)) {
+        throw new Error('reminderDays: только цифры 1–7 через запятую (1=Пн, 7=Вс)')
+      }
+      return true
+    }),
   body('goalEnabled').optional().isBoolean().withMessage('goalEnabled должен быть boolean'),
   body('goalType').optional().trim().isIn(['streak']).withMessage('goalType: только streak (серия дней)'),
   body('goalTarget').optional().isInt({ min: 1, max: 365 }).withMessage('goalTarget от 1 до 365'),

@@ -6,6 +6,7 @@ export interface Habit {
   description: string | null
   reminderTime?: string | null
   reminderEnabled?: boolean
+  reminderDays?: string | null
   goalEnabled?: boolean
   goalType?: string | null // 'streak' | 'count' | 'period'
   goalTarget?: number | null
@@ -33,6 +34,7 @@ export interface CreateHabitDto {
   description?: string
   reminderTime?: string | null
   reminderEnabled?: boolean
+  reminderDays?: string | null
   goalEnabled?: boolean
   goalType?: string
   goalTarget?: number
@@ -44,6 +46,7 @@ export interface UpdateHabitDto {
   description?: string
   reminderTime?: string | null
   reminderEnabled?: boolean
+  reminderDays?: string | null
   goalEnabled?: boolean
   goalType?: string
   goalTarget?: number

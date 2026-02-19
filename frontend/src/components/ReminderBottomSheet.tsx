@@ -1,31 +1,53 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
-export type ReminderMode = 'daily' | 'interval' | 'weekdays' | 'custom'
+export type ReminderMode = 'daily' | 'weekdays'
+
+// ISO weekday: 1 = Пн, 7 = Вс
+const WEEKDAY_LABELS: { value: number; label: string }[] = [
+  { value: 1, label: 'Пн' },
+  { value: 2, label: 'Вт' },
+  { value: 3, label: 'Ср' },
+  { value: 4, label: 'Чт' },
+  { value: 5, label: 'Пт' },
+  { value: 6, label: 'Сб' },
+  { value: 7, label: 'Вс' }
+]
+
+function parseReminderDays(s: string | null | undefined): number[] {
+  if (!s || !s.trim()) return []
+  return s
+    .split(',')
+    .map((x) => parseInt(x.trim(), 10))
+    .filter((n) => n >= 1 && n <= 7)
+}
+
+function formatReminderDays(days: number[]): string | null {
+  if (days.length === 0) return null
+  return [...new Set(days)].sort((a, b) => a - b).join(',')
+}
 
 interface ReminderBottomSheetProps {
   isOpen: boolean
   onClose: () => void
-  /** Режим по умолчанию (для Free только 'daily') */
   mode: ReminderMode
   onModeChange?: (mode: ReminderMode) => void
-  /** Время в формате HH:MM (режим День) */
   time: string
   onTimeChange: (time: string) => void
   reminderEnabled: boolean
   onReminderEnabledChange: (enabled: boolean) => void
+  /** Режим Неделя: "1,2,3,4,5" (ISO 1=Пн, 7=Вс). null = каждый день */
+  reminderDays: string | null
+  onReminderDaysChange: (days: string | null) => void
   onSave: () => void
   isSaving?: boolean
   isPremium: boolean
-  /** При клике на режим, доступный только в PRO */
   onRequestPro?: () => void
 }
 
-const MODES: { id: ReminderMode; label: string; proOnly?: boolean }[] = [
+const MODES: { id: ReminderMode; label: string }[] = [
   { id: 'daily', label: 'День' },
-  { id: 'interval', label: 'Интервал', proOnly: true },
-  { id: 'weekdays', label: 'Неделя', proOnly: true },
-  { id: 'custom', label: 'Кастом', proOnly: true }
+  { id: 'weekdays', label: 'Неделя' }
 ]
 
 export default function ReminderBottomSheet({
@@ -37,11 +59,25 @@ export default function ReminderBottomSheet({
   onTimeChange,
   reminderEnabled,
   onReminderEnabledChange,
+  reminderDays,
+  onReminderDaysChange,
   onSave,
   isSaving = false,
   isPremium,
   onRequestPro
 }: ReminderBottomSheetProps) {
+  const selectedDays = parseReminderDays(reminderDays)
+
+  const toggleDay = (day: number) => {
+    const next = selectedDays.includes(day) ? selectedDays.filter((d) => d !== day) : [...selectedDays, day].sort((a, b) => a - b)
+    onReminderDaysChange(formatReminderDays(next))
+  }
+
+  const setPreset = (preset: 'weekdays' | 'weekend' | 'all') => {
+    if (preset === 'weekdays') onReminderDaysChange('1,2,3,4,5')
+    else if (preset === 'weekend') onReminderDaysChange('6,7')
+    else onReminderDaysChange('1,2,3,4,5,6,7')
+  }
   const sheetRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -63,22 +99,21 @@ export default function ReminderBottomSheet({
     }
   }, [isOpen])
 
-  const effectiveMode = !isPremium && mode !== 'daily' ? 'daily' : mode
+  const weekdaysPreview =
+    selectedDays.length === 0
+      ? 'нет дней'
+      : selectedDays.length === 7
+        ? 'каждый день'
+        : WEEKDAY_LABELS.filter((d) => selectedDays.includes(d.value))
+            .map((d) => d.label)
+            .join(', ')
   const previewText = reminderEnabled
-    ? effectiveMode === 'daily'
+    ? mode === 'daily'
       ? `Напоминание: каждый день в ${time}`
-      : effectiveMode === 'interval'
-        ? 'Напоминание: по интервалу (PRO)'
-        : effectiveMode === 'weekdays'
-          ? 'Напоминание: по дням недели (PRO)'
-          : 'Напоминание: кастом (PRO)'
+      : `Напоминание: ${weekdaysPreview} в ${time}`
     : 'Напоминание отключено'
 
   const handleModeClick = (m: ReminderMode) => {
-    if (MODES.find(x => x.id === m)?.proOnly && !isPremium) {
-      onRequestPro?.()
-      return
-    }
     onModeChange?.(m)
   }
 
@@ -107,7 +142,7 @@ export default function ReminderBottomSheet({
             Напоминание
           </h2>
 
-          {/* Сегментированный контрол: День | Интервал | Неделя | Кастом */}
+          {/* Режим: День | Неделя */}
           <div className="flex gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-700/50 mb-4">
             {MODES.map((m) => (
               <button
@@ -115,15 +150,12 @@ export default function ReminderBottomSheet({
                 type="button"
                 onClick={() => handleModeClick(m.id)}
                 className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-medium transition-all ${
-                  effectiveMode === m.id
+                  mode === m.id
                     ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-600/50'
-                } ${m.proOnly && !isPremium ? 'opacity-75' : ''}`}
+                }`}
               >
-                <span className="flex items-center justify-center gap-1">
-                  {m.label}
-                  {m.proOnly && !isPremium && <span className="text-xs">🔒</span>}
-                </span>
+                {m.label}
               </button>
             ))}
           </div>
@@ -144,8 +176,8 @@ export default function ReminderBottomSheet({
             </label>
           </div>
 
-          {/* Режим День: выбор времени */}
-          {effectiveMode === 'daily' && reminderEnabled && (
+          {/* Выбор времени (общий для День и Неделя) */}
+          {reminderEnabled && (
             <div className="mb-4">
               <label htmlFor="reminder-sheet-time" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                 Время
@@ -157,29 +189,39 @@ export default function ReminderBottomSheet({
                 onChange={(e) => onTimeChange(e.target.value)}
                 className="w-[7rem] max-w-full px-3 py-2 text-base border-2 border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 [&::-webkit-datetime-edit]:text-center"
               />
-            </div>
-          )}
-
-          {/* Плейсхолдеры для PRO-режимов (без сохранения в БД пока) */}
-          {effectiveMode === 'interval' && reminderEnabled && (
-            <div className="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Режим «Интервал» скоро будет доступен. Пока используйте «День».
-              </p>
-            </div>
-          )}
-          {effectiveMode === 'weekdays' && reminderEnabled && (
-            <div className="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Режим «Неделя» скоро будет доступен. Пока используйте «День».
-              </p>
-            </div>
-          )}
-          {effectiveMode === 'custom' && reminderEnabled && (
-            <div className="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                Режим «Кастом» скоро будет доступен. Пока используйте «День».
-              </p>
+              {mode === 'weekdays' && (
+                <div className="mt-3">
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Дни недели</p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {['weekdays', 'weekend', 'all'].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setPreset(preset as 'weekdays' | 'weekend' | 'all')}
+                        className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+                      >
+                        {preset === 'weekdays' ? 'Будни' : preset === 'weekend' ? 'Выходные' : 'Все'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    {WEEKDAY_LABELS.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => toggleDay(value)}
+                        className={`w-9 h-9 rounded-lg text-xs font-semibold transition-colors ${
+                          selectedDays.includes(value)
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

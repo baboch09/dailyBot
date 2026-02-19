@@ -50,6 +50,7 @@ export async function getHabits(req: Request, res: Response) {
         description: habit.description,
         reminderTime: habit.reminderTime,
         reminderEnabled: habit.reminderEnabled,
+        reminderDays: habit.reminderDays ?? null,
         goalEnabled: habit.goalEnabled ?? false,
         goalType: habit.goalType ?? null,
         goalTarget: habit.goalTarget ?? null,
@@ -114,7 +115,7 @@ export async function createHabit(req: Request, res: Response) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User not authenticated' })
     }
     
-    const { name, description, reminderTime, reminderEnabled, goalEnabled, goalType, goalTarget, goalPeriodDays } = req.body
+    const { name, description, reminderTime, reminderEnabled, reminderDays, goalEnabled, goalType, goalTarget, goalPeriodDays } = req.body
 
     // Валидация: проверяем, что имя не пустое после trim
     const trimmedName = name?.trim()
@@ -177,6 +178,7 @@ export async function createHabit(req: Request, res: Response) {
       // Для free пользователей всегда отключаем напоминания
       const finalReminderEnabled = hasPremium ? (reminderEnabled ?? false) : false
       const finalReminderTime = hasPremium ? (reminderTime?.trim() || null) : null
+      const finalReminderDays = hasPremium && reminderDays != null && String(reminderDays).trim() !== '' ? String(reminderDays).trim() : null
 
       // Создаём привычку
       return await tx.habit.create({
@@ -186,6 +188,7 @@ export async function createHabit(req: Request, res: Response) {
           description: description?.trim() || null,
           reminderTime: finalReminderTime,
           reminderEnabled: finalReminderEnabled,
+          reminderDays: finalReminderDays,
           goalEnabled: finalGoalEnabled,
           goalType: finalGoalType,
           goalTarget: finalGoalTarget,
@@ -204,6 +207,7 @@ export async function createHabit(req: Request, res: Response) {
       description: habit.description,
       reminderTime: habit.reminderTime,
       reminderEnabled: habit.reminderEnabled,
+      reminderDays: habit.reminderDays ?? null,
       goalEnabled: habit.goalEnabled ?? false,
       goalType: habit.goalType ?? null,
       goalTarget: habit.goalTarget ?? null,
@@ -322,14 +326,21 @@ export async function updateHabit(req: Request, res: Response) {
     if (description !== undefined) updateData.description = description?.trim() || null
     if ('reminderTime' in req.body) updateData.reminderTime = req.body.reminderTime || null
     if ('reminderEnabled' in req.body) {
-      // Если отключают напоминание или у пользователя Premium, разрешаем
       if (!req.body.reminderEnabled || hasPremium) {
         updateData.reminderEnabled = req.body.reminderEnabled ?? true
+      }
+      if (req.body.reminderEnabled === false) {
+        updateData.reminderDays = null
       }
     }
     if (!hasPremium) {
       updateData.reminderEnabled = false
       updateData.reminderTime = null
+      updateData.reminderDays = null
+    }
+    if ('reminderDays' in req.body) {
+      const v = req.body.reminderDays
+      updateData.reminderDays = (v != null && String(v).trim() !== '') ? String(v).trim() : null
     }
 
     // Цели — только для Premium
@@ -363,6 +374,7 @@ export async function updateHabit(req: Request, res: Response) {
       description: habit.description,
       reminderTime: habit.reminderTime,
       reminderEnabled: habit.reminderEnabled,
+      reminderDays: habit.reminderDays ?? null,
       goalEnabled: habit.goalEnabled ?? false,
       goalType: habit.goalType ?? null,
       goalTarget: habit.goalTarget ?? null,

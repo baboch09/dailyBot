@@ -20,6 +20,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const [reminderMode, setReminderMode] = useState<ReminderMode>('daily')
   const [reminderTime, setReminderTime] = useState(habit.reminderTime || '09:00')
   const [reminderEnabled, setReminderEnabled] = useState(habit.reminderEnabled ?? false)
+  const [reminderDays, setReminderDays] = useState<string | null>(habit.reminderDays ?? null)
   const [isUpdatingReminder, setIsUpdatingReminder] = useState(false)
   const [isEditingHabit, setIsEditingHabit] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -97,7 +98,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
       const previousReminderEnabled = habit.reminderEnabled ?? false
       await habitsApi.update(habit.id, {
         reminderTime: reminderEnabled ? reminderTime : null,
-        reminderEnabled: reminderEnabled
+        reminderEnabled: reminderEnabled,
+        reminderDays: reminderMode === 'daily' ? null : (reminderDays || null)
       })
       if (reminderEnabled && !previousReminderEnabled && isPremium) {
         track('reminder_installed', { isPremium: true })
@@ -123,6 +125,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const openReminderSheet = () => {
     setReminderTime(habit.reminderTime || '09:00')
     setReminderEnabled(habit.reminderEnabled ?? false)
+    setReminderDays(habit.reminderDays ?? null)
+    setReminderMode(habit.reminderDays && habit.reminderDays.trim() !== '' ? 'weekdays' : 'daily')
     setReminderSheetOpen(true)
     setShowMenu(false)
   }
@@ -158,8 +162,18 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
 
   const formatTime = (time: string | null | undefined) => {
     if (!time) return null
-    // Возвращаем время в 24-часовом формате (HH:MM)
     return time
+  }
+
+  const formatReminderPreview = (): string | null => {
+    if (!habit.reminderTime) return null
+    const days = habit.reminderDays?.trim()
+    if (!days) return `Каждый день в ${habit.reminderTime}`
+    const labels: Record<string, string> = { '1': 'Пн', '2': 'Вт', '3': 'Ср', '4': 'Чт', '5': 'Пт', '6': 'Сб', '7': 'Вс' }
+    const list = days.split(',').map((d) => labels[d.trim()] || d.trim()).filter(Boolean)
+    if (list.length === 0) return `Каждый день в ${habit.reminderTime}`
+    if (list.length === 7) return `Каждый день в ${habit.reminderTime}`
+    return `${list.join(', ')} в ${habit.reminderTime}`
   }
 
   // Таймер до конца дня (обнуление прогресса). Показываем только в последние 30 минут.
@@ -411,10 +425,10 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   </p>
                 )}
 
-                {/* Напоминание — только для Premium; вариант C: только текст; если выкл — не показываем */}
-                {isPremium && habit.reminderEnabled && habit.reminderTime && (
+                {/* Напоминание — только для Premium */}
+                {isPremium && habit.reminderEnabled && habit.reminderTime && formatReminderPreview() && (
                   <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formatTime(habit.reminderTime)}
+                    {formatReminderPreview()}
                   </p>
                 )}
 
@@ -427,6 +441,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                   onTimeChange={setReminderTime}
                   reminderEnabled={reminderEnabled}
                   onReminderEnabledChange={setReminderEnabled}
+                  reminderDays={reminderDays}
+                  onReminderDaysChange={setReminderDays}
                   onSave={handleUpdateReminder}
                   isSaving={isUpdatingReminder}
                   isPremium={isPremium}

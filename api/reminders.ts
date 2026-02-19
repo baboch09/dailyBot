@@ -117,6 +117,40 @@ async function checkAndSendReminders() {
   console.log(`🕐 Current time (UTC): ${currentTimeUTC}`)
   
   /**
+   * Парсит часовой пояс "UTC+3", "UTC-5" и возвращает смещение в часах
+   */
+  function parseTimezoneOffset(tz: string): number {
+    const match = tz.match(/UTC([+-])(\d+)/)
+    if (!match) return 3
+    const sign = match[1] === '+' ? 1 : -1
+    return parseInt(match[2], 10) * sign
+  }
+
+  /**
+   * Начало "сегодня" в часовом поясе пользователя (как Date в UTC).
+   * Совпадает с логикой бэкенда при создании логов — проверка "выполнено сегодня" корректна.
+   */
+  function getStartOfTodayUTC(tz: string): Date {
+    const offsetHours = parseTimezoneOffset(tz)
+    const now = new Date()
+    const localMs = now.getTime() + offsetHours * 60 * 60 * 1000
+    const localDate = new Date(localMs)
+    const y = localDate.getUTCFullYear()
+    const m = localDate.getUTCMonth()
+    const d = localDate.getUTCDate()
+    const midnightLocal = Date.UTC(y, m, d) - offsetHours * 60 * 60 * 1000
+    return new Date(midnightLocal)
+  }
+
+  /**
+   * Начало следующего дня в часовом поясе пользователя
+   */
+  function getStartOfTomorrowUTC(tz: string): Date {
+    const today = getStartOfTodayUTC(tz)
+    return new Date(today.getTime() + 24 * 60 * 60 * 1000)
+  }
+
+  /**
    * Преобразует время из локального часового пояса пользователя в UTC
    * @param localTime Время в формате "HH:MM" в локальном часовом поясе пользователя
    * @param timezone Часовой пояс пользователя (например, "UTC+3", "UTC-5")
@@ -165,12 +199,6 @@ async function checkAndSendReminders() {
 
   console.log(`📋 Found ${habits.length} habits with reminders enabled`)
 
-  // Получаем сегодняшнюю дату
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const tomorrow = new Date(today)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
   let sentCount = 0
 
   for (const habit of habits) {
@@ -198,13 +226,30 @@ async function checkAndSendReminders() {
       continue
     }
 
-    // Проверяем, выполнена ли привычка сегодня
+    // Режим «Неделя»: напоминание только в выбранные дни (ISO 1=Пн … 7=Вс)
+    const reminderDays = (habit as { reminderDays?: string | null }).reminderDays
+    if (reminderDays != null && reminderDays.trim() !== '') {
+      const nowInUserTz = new Date(now.getTime() + parseTimezoneOffset(userTimezone) * 60 * 60 * 1000)
+      const jsDay = nowInUserTz.getUTCDay() // 0=Вс, 1=Пн, …, 6=Сб
+      const isoWeekday = jsDay === 0 ? 7 : jsDay // 1=Пн, …, 7=Вс
+      const allowedDays = reminderDays.split(',').map((s) => parseInt(s.trim(), 10)).filter((n) => n >= 1 && n <= 7)
+      if (allowedDays.length > 0 && !allowedDays.includes(isoWeekday)) {
+        console.log(`   ⏭️  Skipping - today (ISO ${isoWeekday}) not in reminderDays [${reminderDays}]`)
+        continue
+      }
+    }
+
+    // «Сегодня» считаем по часовому поясу пользователя (как при создании логов в бэкенде)
+    const todayStart = getStartOfTodayUTC(userTimezone)
+    const tomorrowStart = getStartOfTomorrowUTC(userTimezone)
+
+    // Проверяем, выполнена ли привычка сегодня (в календарном дне пользователя)
     const todayLog = await prisma.habitLog.findFirst({
       where: {
         habitId: habit.id,
         date: {
-          gte: today,
-          lt: tomorrow
+          gte: todayStart,
+          lt: tomorrowStart
         }
       }
     })

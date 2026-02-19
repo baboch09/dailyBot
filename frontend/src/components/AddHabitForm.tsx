@@ -22,6 +22,8 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
     goalEnabled: false
   })
   const [reminderTime, setReminderTime] = useState('09:00')
+  const [reminderMode, setReminderMode] = useState<'daily' | 'weekdays'>('daily')
+  const [reminderDays, setReminderDays] = useState<string | null>(null)
   const [goalTarget, setGoalTarget] = useState(21)
   const [reminderSheetOpen, setReminderSheetOpen] = useState(false)
   const [error, setError] = useState('')
@@ -62,6 +64,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         description: formData.description?.trim() || undefined,
         reminderTime: formData.reminderEnabled ? reminderTime : null,
         reminderEnabled: formData.reminderEnabled,
+        reminderDays: formData.reminderEnabled && reminderMode === 'weekdays' ? reminderDays : undefined,
         goalEnabled: formData.goalEnabled && isPremium ? true : false,
         goalType: formData.goalEnabled && isPremium ? 'streak' : undefined,
         goalTarget: formData.goalEnabled && isPremium ? goalTarget : undefined
@@ -82,6 +85,8 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
       
       setFormData({ name: '', description: '', reminderEnabled: true, goalEnabled: false })
       setReminderTime('09:00')
+      setReminderMode('daily')
+      setReminderDays(null)
       setGoalTarget(21)
       setIsOpen(false)
       setError('')
@@ -283,12 +288,14 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
       <ReminderBottomSheet
         isOpen={reminderSheetOpen}
         onClose={() => setReminderSheetOpen(false)}
-        mode="daily"
-        onModeChange={() => {}}
+        mode={reminderMode}
+        onModeChange={setReminderMode}
         time={reminderTime}
         onTimeChange={setReminderTime}
         reminderEnabled={!!formData.reminderEnabled}
         onReminderEnabledChange={(enabled) => setFormData(f => ({ ...f, reminderEnabled: enabled }))}
+        reminderDays={reminderDays}
+        onReminderDaysChange={setReminderDays}
         onSave={() => setReminderSheetOpen(false)}
         isPremium={!!isPremium}
         onRequestPro={onScrollToSubscription}

@@ -37,6 +37,7 @@ model Habit {
   description String?
   reminderTime String?
   reminderEnabled Boolean @default(true)
+  reminderDays  String?  // Режим «Неделя»: дни 1–7 (ISO: 1=Пн, 7=Вс), например "1,2,3,4,5". null = каждый день
   goalEnabled   Boolean @default(false)
   goalType      String?
   goalTarget    Int?

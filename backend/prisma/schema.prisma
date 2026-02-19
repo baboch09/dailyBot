@@ -40,6 +40,7 @@ model Habit {
   description String?  // Опциональное описание
   reminderTime String? // Время напоминания (формат: "HH:MM", например "09:00" или null если отключено)
   reminderEnabled Boolean @default(true) // Включено ли напоминание
+  reminderDays  String?  // Режим «Неделя»: дни 1–7 (ISO: 1=Пн, 7=Вс), через запятую, например "1,2,3,4,5". null = каждый день
   // Цели (PRO): опциональные поля, обратно совместимы
   goalEnabled   Boolean @default(false)
   goalType      String? // "streak" | "count" | "period"
