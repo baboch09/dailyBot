@@ -27,7 +27,7 @@ export const createHabitValidation: ValidationChain[] = [
     }),
   body('reminderEnabled').optional().isBoolean().withMessage('reminderEnabled должен быть boolean'),
   body('goalEnabled').optional().isBoolean().withMessage('goalEnabled должен быть boolean'),
-  body('goalType').optional().trim().isIn(['streak', 'count', 'period']).withMessage('goalType: streak, count или period'),
+  body('goalType').optional().trim().isIn(['streak']).withMessage('goalType: только streak (серия дней)'),
   body('goalTarget').optional().isInt({ min: 1, max: 365 }).withMessage('goalTarget от 1 до 365'),
   body('goalPeriodDays').optional().isInt({ min: 1, max: 365 }).withMessage('goalPeriodDays от 1 до 365')
 ]
@@ -64,7 +64,7 @@ export const updateHabitValidation: ValidationChain[] = [
     }),
   body('reminderEnabled').optional().isBoolean().withMessage('reminderEnabled должен быть boolean'),
   body('goalEnabled').optional().isBoolean().withMessage('goalEnabled должен быть boolean'),
-  body('goalType').optional().trim().isIn(['streak', 'count', 'period']).withMessage('goalType: streak, count или period'),
+  body('goalType').optional().trim().isIn(['streak']).withMessage('goalType: только streak (серия дней)'),
   body('goalTarget').optional().isInt({ min: 1, max: 365 }).withMessage('goalTarget от 1 до 365'),
   body('goalPeriodDays').optional().isInt({ min: 1, max: 365 }).withMessage('goalPeriodDays от 1 до 365')
 ]

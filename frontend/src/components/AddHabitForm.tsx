@@ -22,9 +22,7 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
     goalEnabled: false
   })
   const [reminderTime, setReminderTime] = useState('09:00')
-  const [goalType, setGoalType] = useState<'streak' | 'count' | 'period'>('streak')
   const [goalTarget, setGoalTarget] = useState(21)
-  const [goalPeriodDays, setGoalPeriodDays] = useState(21)
   const [reminderSheetOpen, setReminderSheetOpen] = useState(false)
   const [error, setError] = useState('')
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null)
@@ -65,9 +63,8 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         reminderTime: formData.reminderEnabled ? reminderTime : null,
         reminderEnabled: formData.reminderEnabled,
         goalEnabled: formData.goalEnabled && isPremium ? true : false,
-        goalType: formData.goalEnabled && isPremium ? goalType : undefined,
-        goalTarget: formData.goalEnabled && isPremium ? goalTarget : undefined,
-        goalPeriodDays: formData.goalEnabled && isPremium ? goalPeriodDays : undefined
+        goalType: formData.goalEnabled && isPremium ? 'streak' : undefined,
+        goalTarget: formData.goalEnabled && isPremium ? goalTarget : undefined
       })
       // Аналитика: добавление привычки
       track('habit_created', {
@@ -86,7 +83,6 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
       setFormData({ name: '', description: '', reminderEnabled: true, goalEnabled: false })
       setReminderTime('09:00')
       setGoalTarget(21)
-      setGoalPeriodDays(21)
       setIsOpen(false)
       setError('')
       await loadSubscriptionStatus() // Обновляем статус после создания
@@ -329,67 +325,23 @@ const AddHabitForm: React.FC<AddHabitFormProps> = ({ onSuccess, habitsCount: pro
         {formData.goalEnabled && isPremium && (
           <div className="space-y-3 mt-2">
             <div>
-              <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Тип цели</label>
+              <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Дней подряд</label>
               <div className="flex gap-2 flex-wrap">
-                {(['streak', 'count', 'period'] as const).map((t) => (
+                {[21, 30, 90].map((n) => (
                   <button
-                    key={t}
+                    key={n}
                     type="button"
-                    onClick={() => setGoalType(t)}
-                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                      goalType === t
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300'
+                    onClick={() => setGoalTarget(n)}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium ${
+                      goalTarget === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
                     }`}
                   >
-                    {t === 'streak' ? 'Серия дней' : t === 'count' ? 'Кол-во раз' : 'Период'}
+                    {n}
                   </button>
                 ))}
               </div>
             </div>
-            {goalType === 'streak' && (
-              <div>
-                <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Дней подряд</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[21, 30, 90].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setGoalTarget(n)}
-                      className={`px-3 py-2 rounded-xl text-sm font-medium ${
-                        goalTarget === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {(goalType === 'count' || goalType === 'period') && (
-              <div>
-                <label className="block text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Период (дней)</label>
-                <div className="flex gap-2 flex-wrap">
-                  {[21, 30, 90].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setGoalPeriodDays(n)}
-                      className={`px-3 py-2 rounded-xl text-sm font-medium ${
-                        goalPeriodDays === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              {goalType === 'streak' && `${goalTarget} дней подряд`}
-              {goalType === 'count' && `Количество раз за ${goalPeriodDays} дней`}
-              {goalType === 'period' && `Выполнять в течение ${goalPeriodDays} дней`}
-            </p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">{goalTarget} дней подряд</p>
           </div>
         )}
       </div>

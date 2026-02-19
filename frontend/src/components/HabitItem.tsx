@@ -26,9 +26,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
   const [editingName, setEditingName] = useState(habit.name)
   const [editingDescription, setEditingDescription] = useState(habit.description || '')
   const [editingGoalEnabled, setEditingGoalEnabled] = useState(habit.goalEnabled ?? false)
-  const [editingGoalType, setEditingGoalType] = useState<'streak' | 'count' | 'period'>((habit.goalType as 'streak' | 'count' | 'period') || 'streak')
   const [editingGoalTarget, setEditingGoalTarget] = useState(habit.goalTarget ?? 21)
-  const [editingGoalPeriodDays, setEditingGoalPeriodDays] = useState(habit.goalPeriodDays ?? 21)
   const [isUpdatingHabit, setIsUpdatingHabit] = useState(false)
 
   const handleComplete = async () => {
@@ -141,9 +139,8 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
         name: editingName.trim(),
         description: editingDescription.trim() || undefined,
         goalEnabled: isPremium ? editingGoalEnabled : false,
-        goalType: isPremium && editingGoalEnabled ? editingGoalType : undefined,
-        goalTarget: isPremium && editingGoalEnabled ? editingGoalTarget : undefined,
-        goalPeriodDays: isPremium && editingGoalEnabled ? editingGoalPeriodDays : undefined
+        goalType: isPremium && editingGoalEnabled ? 'streak' : undefined,
+        goalTarget: isPremium && editingGoalEnabled ? editingGoalTarget : undefined
       })
       setIsEditingHabit(false)
       setShowMenu(false)
@@ -300,34 +297,14 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                     </div>
                     {editingGoalEnabled && (
                       <div className="flex gap-2 flex-wrap mt-2">
-                        {(['streak', 'count', 'period'] as const).map((t) => (
-                          <button
-                            key={t}
-                            type="button"
-                            onClick={() => setEditingGoalType(t)}
-                            className={`px-2 py-1.5 rounded-lg text-xs font-medium ${
-                              editingGoalType === t ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
-                            }`}
-                          >
-                            {t === 'streak' ? 'Серия' : t === 'count' ? 'Кол-во' : 'Период'}
-                          </button>
-                        ))}
-                        {editingGoalType === 'streak' && [21, 30, 90].map((n) => (
+                        {[21, 30, 90].map((n) => (
                           <button
                             key={n}
                             type="button"
                             onClick={() => setEditingGoalTarget(n)}
-                            className={`px-2 py-1.5 rounded-lg text-xs ${editingGoalTarget === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border'}`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                        {(editingGoalType === 'count' || editingGoalType === 'period') && [21, 30, 90].map((n) => (
-                          <button
-                            key={n}
-                            type="button"
-                            onClick={() => setEditingGoalPeriodDays(n)}
-                            className={`px-2 py-1.5 rounded-lg text-xs ${editingGoalPeriodDays === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border'}`}
+                            className={`px-2 py-1.5 rounded-lg text-xs font-medium ${
+                              editingGoalTarget === n ? 'bg-amber-500 text-white' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600'
+                            }`}
                           >
                             {n}
                           </button>
@@ -350,9 +327,7 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
                       setEditingName(habit.name)
                       setEditingDescription(habit.description || '')
                       setEditingGoalEnabled(habit.goalEnabled ?? false)
-                      setEditingGoalType((habit.goalType as 'streak' | 'count' | 'period') || 'streak')
                       setEditingGoalTarget(habit.goalTarget ?? 21)
-                      setEditingGoalPeriodDays(habit.goalPeriodDays ?? 21)
                     }}
                     className="px-4 py-2 border-2 border-gray-200 dark:border-gray-700 [@media(hover:hover)]:hover:border-gray-300 [@media(hover:hover)]:dark:hover:border-gray-600 rounded-full [@media(hover:hover)]:hover:bg-gray-50 [@media(hover:hover)]:dark:hover:bg-gray-700/50 transition-all text-xs font-medium text-gray-700 dark:text-gray-300"
                   >
@@ -472,20 +447,21 @@ const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPr
               </div>
             )}
 
-            {/* Прогресс: 7 секций по дням (1–7, 8–14, 15–21 и т.д.); градиент внутри недели, разный цвет по неделям */}
+            {/* Прогресс: 7 секций по дням (1–7, 8–14, 15–21 и т.д.); цвет фиксирован по habit.id, градиент внутри блока */}
             <div className="flex items-center gap-2 mt-3">
               {(() => {
                 const streak = Number(habit.streak) || 0
                 const baseDay = streak === 0 ? 1 : Math.floor((streak - 1) / 7) * 7 + 1
                 const filledCount = streak === 0 ? 0 : streak - baseDay + 1
-                const weekIndex = Math.floor((baseDay - 1) / 7)
-                const weekPalette: Record<number, string[]> = {
-                  0: ['bg-emerald-300 dark:bg-emerald-600', 'bg-emerald-400 dark:bg-emerald-500', 'bg-emerald-500 dark:bg-emerald-400', 'bg-emerald-600 dark:bg-emerald-300'],
-                  1: ['bg-blue-300 dark:bg-blue-600', 'bg-blue-400 dark:bg-blue-500', 'bg-blue-500 dark:bg-blue-400', 'bg-blue-600 dark:bg-blue-300'],
-                  2: ['bg-violet-300 dark:bg-violet-600', 'bg-violet-400 dark:bg-violet-500', 'bg-violet-500 dark:bg-violet-400', 'bg-violet-600 dark:bg-violet-300'],
-                  3: ['bg-amber-300 dark:bg-amber-600', 'bg-amber-400 dark:bg-amber-500', 'bg-amber-500 dark:bg-amber-400', 'bg-amber-600 dark:bg-amber-300']
-                }
-                const palette = weekPalette[weekIndex % 4] ?? weekPalette[0]
+                const palettes: string[][] = [
+                  ['bg-emerald-300 dark:bg-emerald-600', 'bg-emerald-400 dark:bg-emerald-500', 'bg-emerald-500 dark:bg-emerald-400', 'bg-emerald-600 dark:bg-emerald-300'],
+                  ['bg-blue-300 dark:bg-blue-600', 'bg-blue-400 dark:bg-blue-500', 'bg-blue-500 dark:bg-blue-400', 'bg-blue-600 dark:bg-blue-300'],
+                  ['bg-violet-300 dark:bg-violet-600', 'bg-violet-400 dark:bg-violet-500', 'bg-violet-500 dark:bg-violet-400', 'bg-violet-600 dark:bg-violet-300'],
+                  ['bg-amber-300 dark:bg-amber-600', 'bg-amber-400 dark:bg-amber-500', 'bg-amber-500 dark:bg-amber-400', 'bg-amber-600 dark:bg-amber-300']
+                ]
+                // Стабильный цвет для каждой привычки по id (разные привычки — разные цвета)
+                const paletteIndex = habit.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 4
+                const palette = palettes[paletteIndex] ?? palettes[0]
                 const getFilledClass = (index: number) => {
                   if (filledCount <= 1) return palette[3]
                   const t = index / (filledCount - 1)
