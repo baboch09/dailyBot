@@ -21,13 +21,26 @@ export async function calculateStreak(habitId: string, timezone: string = DEFAUL
   const normalizedLogs = logs.map(log => normalizeLogDateToDay(new Date(log.date), timezone))
   const hasTodayLog = normalizedLogs.some(logDate => logDate.getTime() === today.getTime())
 
-  if (!hasTodayLog) {
-    return 0
+  if (hasTodayLog) {
+    // Серия с учётом сегодня: считаем от сегодня назад
+    let streak = 1
+    let checkDate = getStartOfPreviousDayUTC(today, timezone)
+    for (let i = 1; i < normalizedLogs.length; i++) {
+      const logDate = normalizedLogs[i]
+      if (logDate.getTime() === checkDate.getTime()) {
+        streak++
+        checkDate = getStartOfPreviousDayUTC(checkDate, timezone)
+      } else {
+        break
+      }
+    }
+    return streak
   }
 
+  // Нет отметки за сегодня — показываем серию по последнему отмеченному дню (т.е. минус 1 от той, что была с сегодня)
+  const lastLoggedDay = normalizedLogs[0]
   let streak = 1
-  let checkDate = getStartOfPreviousDayUTC(today, timezone)
-
+  let checkDate = getStartOfPreviousDayUTC(lastLoggedDay, timezone)
   for (let i = 1; i < normalizedLogs.length; i++) {
     const logDate = normalizedLogs[i]
     if (logDate.getTime() === checkDate.getTime()) {
@@ -37,7 +50,6 @@ export async function calculateStreak(habitId: string, timezone: string = DEFAUL
       break
     }
   }
-
   return streak
 }
 
