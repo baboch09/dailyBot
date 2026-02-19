@@ -13,7 +13,7 @@ interface HabitItemProps {
   onScrollToSubscription?: () => void
 }
 
-const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, isPremium = false, onScrollToSubscription }) => {
+const HabitItem: React.FC<HabitItemProps> = ({ habit, onUpdate, onComplete, onDelete, isPremium = false, onScrollToSubscription }) => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [reminderSheetOpen, setReminderSheetOpen] = useState(false)
