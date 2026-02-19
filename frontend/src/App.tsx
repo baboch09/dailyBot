@@ -86,15 +86,20 @@ function App() {
       paymentReturn === 'true' ||
       (paymentInitiated && Date.now() - initiatedTime < 30 * 60 * 1000)
 
+    // Сбрасываем скелетон при каждом заходе, если не в сценарии «возврат с оплаты» — чтобы не зависнуть после прошлого раза
+    if (!isReturnFromPayment) {
+      setSubscriptionRefreshing(false)
+      return
+    }
+
     if (paymentStatusParam === 'fail') {
       window.history.replaceState({}, '', window.location.pathname)
+      localStorage.removeItem('payment_initiated')
       setTimeout(() => {
         alert('❌ Ошибка при обработке платежа. Попробуйте еще раз.')
       }, 500)
       return
     }
-
-    if (!isReturnFromPayment) return
 
     if (paymentStatusParam === 'success' || paymentReturn === 'true') {
       window.history.replaceState({}, '', window.location.pathname)
@@ -106,11 +111,15 @@ function App() {
     const STATUS_POLL_ATTEMPTS = 6
     const SAFETY_TIMEOUT_MS = 25000
 
+    const clearRefresh = () => setSubscriptionRefreshing(false)
+    const doneWithPayment = () => {
+      localStorage.removeItem('payment_initiated')
+      sessionStorage.removeItem('pending_payment_plan')
+    }
+
     const checkAndActivateSubscription = async () => {
       setSubscriptionRefreshing(true)
-      const safetyTimeout = setTimeout(() => {
-        setSubscriptionRefreshing(false)
-      }, SAFETY_TIMEOUT_MS)
+      const safetyTimeout = setTimeout(clearRefresh, SAFETY_TIMEOUT_MS)
 
       try {
         let latest = await subscriptionApi.checkLatestPaymentStatus()
@@ -121,24 +130,30 @@ function App() {
             latest = await subscriptionApi.checkLatestPaymentStatus()
             if (latest.hasPayment && latest.status === 'succeeded') break
             if (latest.hasPayment && latest.status === 'canceled') {
+              doneWithPayment()
               await loadSubscriptionStatus()
               alert('Платеж отменён.')
+              clearRefresh()
+              clearTimeout(safetyTimeout)
               return
             }
           }
         }
 
         if (!latest.hasPayment || latest.status !== 'succeeded') {
+          doneWithPayment()
           await loadSubscriptionStatus()
+          clearRefresh()
+          clearTimeout(safetyTimeout)
           if (latest.hasPayment && latest.status === 'pending') {
-            alert('⏳ Платеж обрабатывается. Подписка появится в течение минуты. Можно закрыть приложение и зайти снова.')
+            alert('⏳ Платеж обрабатывается. Подписка появится в течение минуты. Закройте приложение и зайдите снова.')
           } else {
             alert('⚠️ Не удалось найти информацию о платеже. Проверьте статус подписки или зайдите позже.')
           }
           return
         }
 
-        // Дожидаемся, пока бэкенд покажет активную подписку (после webhook или после checkLatestPaymentStatus)
+        // Дожидаемся, пока бэкенд покажет активную подписку
         let status = await subscriptionApi.getStatus()
         const isActive = (s: typeof status) =>
           s?.subscriptionStatus === 'active' && (s?.daysRemaining ?? 0) > 0
@@ -147,11 +162,20 @@ function App() {
           status = await subscriptionApi.getStatus()
         }
 
-        setSubscriptionStatus(status)
+        clearRefresh()
+        clearTimeout(safetyTimeout)
+
+        if (!isActive(status)) {
+          doneWithPayment()
+          await loadSubscriptionStatus()
+          alert('⏳ Подписка активируется в течение минуты. Закройте приложение и зайдите снова — тариф обновится.')
+          return
+        }
+
         const planType = sessionStorage.getItem('pending_payment_plan') || 'unknown'
+        doneWithPayment()
+        setSubscriptionStatus(status)
         track('payment_completed', { planType })
-        sessionStorage.removeItem('pending_payment_plan')
-        localStorage.removeItem('payment_initiated')
 
         if (window.Telegram?.WebApp?.showAlert) {
           window.Telegram.WebApp.showAlert('🎉 Платеж успешно обработан! Ваша подписка активирована.')
@@ -161,7 +185,10 @@ function App() {
         window.location.reload()
       } catch (error) {
         console.error('Error checking payment status:', error)
+        doneWithPayment()
         await loadSubscriptionStatus()
+        clearRefresh()
+        clearTimeout(safetyTimeout)
         alert('⏳ Не удалось проверить платёж. Если оплата прошла, зайдите в приложение ещё раз — подписка подтянется.')
       } finally {
         clearTimeout(safetyTimeout)
@@ -173,7 +200,10 @@ function App() {
     const t = setTimeout(() => {
       checkAndActivateSubscription()
     }, delayMs)
-    return () => clearTimeout(t)
+    return () => {
+      clearTimeout(t)
+      setSubscriptionRefreshing(false)
+    }
   }, [])
 
   const loadSubscriptionStatus = async () => {
