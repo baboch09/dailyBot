@@ -138,11 +138,9 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
               : 'text-gray-500 dark:text-gray-500 opacity-60 hover:opacity-80'
           }`}
         >
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 dark:bg-amber-400" aria-hidden />
           <span className="flex items-center justify-center gap-2 flex-wrap">
             Год
-            <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-medium rounded-full">
-              Лучший выбор
-            </span>
             {savings > 0 && (
               <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium rounded-full">
                 −{savingsPercent}%
@@ -160,6 +158,13 @@ export default function SubscriptionPlans({ onPaymentCreated }: SubscriptionPlan
         {(activeTab === 'month' && monthPlan) || (activeTab === 'year' && yearPlan) ? (
           <div className="space-y-6">
             <div className="text-center">
+              {activeTab === 'year' && (
+                <p className="mb-3">
+                  <span className="inline-flex px-3 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 text-xs font-medium rounded-full">
+                    Лучший выбор
+                  </span>
+                </p>
+              )}
               <div className="flex items-baseline justify-center gap-2 mb-2">
                 {activeTab === 'year' ? (
                   <>
