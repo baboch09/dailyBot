@@ -45,53 +45,17 @@ export default function SubscriptionManager({ externalLoading = false }: Subscri
   }, [])
 
   const checkReturnFromPayment = async () => {
-    // Используем localStorage вместо sessionStorage для сохранения между сессиями
     const paymentInitiated = localStorage.getItem('payment_initiated')
     if (!paymentInitiated) return
 
-    const initiatedTime = parseInt(paymentInitiated)
+    const initiatedTime = parseInt(paymentInitiated, 10)
     const now = Date.now()
-    
-    // Если платеж был инициирован недавно (в течение 30 минут)
-    if (now - initiatedTime < 30 * 60 * 1000) {
-      console.log('🔍 Checking payment status after return from payment...')
-      
-      try {
-        // Проверяем статус последнего платежа
-        const result = await subscriptionApi.checkLatestPaymentStatus()
-        
-        if (result.hasPayment && result.status === 'succeeded') {
-          console.log('✅ Payment succeeded! Activating subscription...')
-          
-          // Очищаем метку
-          localStorage.removeItem('payment_initiated')
-          
-          // Перезагружаем статус подписки
-          await loadStatus()
-          
-          // Показываем уведомление (если есть Telegram WebApp API)
-          if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('🎉 Подписка успешно активирована!')
-          } else {
-            alert('🎉 Подписка успешно активирована!')
-          }
-        } else if (result.hasPayment && result.status === 'pending') {
-          console.log('⏳ Payment still pending, will check again later')
-          // Показываем уведомление о том, что платеж обрабатывается
-          if (window.Telegram?.WebApp?.showAlert) {
-            window.Telegram.WebApp.showAlert('⏳ Платеж обрабатывается. Подождите немного.')
-          }
-        } else if (result.hasPayment && result.status === 'canceled') {
-          console.log('❌ Payment was canceled')
-          localStorage.removeItem('payment_initiated')
-        }
-      } catch (error) {
-        console.error('Error checking payment status:', error)
-      }
-    } else {
-      // Платеж был давно, удаляем метку
-      localStorage.removeItem('payment_initiated')
-    }
+    const isRecent = now - initiatedTime < 30 * 60 * 1000
+
+    // Возврат после оплаты обрабатывается в App.tsx (единый флоу с опросом до активной подписки)
+    if (isRecent) return
+
+    localStorage.removeItem('payment_initiated')
   }
 
   const loadStatus = async () => {
